@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
+
+a.active {
+  text-decoration: underline;
+  font-weight: bold;
+  color: #e14496;
+}
