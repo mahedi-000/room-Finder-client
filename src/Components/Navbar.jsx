@@ -57,6 +57,9 @@ const Navbar = () => {
                 <li>
                   <NavLink to="/profile">Routine</NavLink>
                 </li>
+                <li>
+                  <NavLink to="/rooms">Rooms</NavLink>
+                </li>
               </ul>
             </div>
             <div className="flex gap-1">
@@ -79,6 +82,9 @@ const Navbar = () => {
               </li>
               <li>
                 <NavLink to="/profile">Routine</NavLink>
+              </li>
+              <li>
+                <NavLink to="/rooms">Rooms</NavLink>
               </li>
             </ul>
             {user ? (
