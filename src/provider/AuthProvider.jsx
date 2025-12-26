@@ -37,7 +37,6 @@ const AuthProvider = ({ children }) => {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-
           console.warn("Unauthorized (401). Check token or session.");
         }
         return Promise.reject(error);
@@ -77,45 +76,48 @@ const AuthProvider = ({ children }) => {
     setUser(auth.currentUser);
   };
 
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-    console.log("CurrentUser-->", currentUser?.email);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log("CurrentUser-->", currentUser?.email);
 
-    if (currentUser) {
-      try {
-        const token = await currentUser.getIdToken();
-        console.log("Syncing user with backend...");
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          console.log("Syncing user with backend...");
 
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/sync-firebase-user`,
-          {
-            idToken: token,
-          }
-        );
+          const response = await axios.post(
+            `${import.meta.env.VITE_API_URL}/auth/sync-firebase-user`,
+            {
+              idToken: token,
+            }
+          );
 
-        const userData = response.data.data.user;
-        console.log("User synced with DB:", userData);
+          const userData = response.data.data.user;
+          console.log("User synced with DB:", userData);
 
-        localStorage.setItem("accessToken", token);
+          localStorage.setItem("accessToken", token);
 
-        setUser(currentUser);
-      } catch (error) {
-        console.error("Error syncing user:", error);
-        console.error("Error details:", error.response?.data || error.message);
-        setUser(currentUser);
+          setUser(currentUser);
+        } catch (error) {
+          console.error("Error syncing user:", error);
+          console.error(
+            "Error details:",
+            error.response?.data || error.message
+          );
+          setUser(currentUser);
+        }
+      } else {
+        setUser(null);
+        localStorage.removeItem("accessToken");
       }
-    } else {
-      setUser(null);
-      localStorage.removeItem("accessToken");
-    }
 
-    setLoading(false);
-  });
+      setLoading(false);
+    });
 
-  return () => {
-    return unsubscribe();
-  };
-}, []);
+    return () => {
+      return unsubscribe();
+    };
+  }, []);
 
   const authInfo = {
     user,

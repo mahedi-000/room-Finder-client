@@ -55,7 +55,7 @@ const Navbar = () => {
                   <NavLink to="/about-us">About US</NavLink>
                 </li>
                 <li>
-                  <NavLink to="/profile">Routine</NavLink>
+                  <NavLink to="/routines">Routine</NavLink>
                 </li>
                 <li>
                   <NavLink to="/rooms">Rooms</NavLink>
@@ -65,7 +65,7 @@ const Navbar = () => {
             <div className="flex gap-1">
               <Link
                 to="/"
-                className="flex items-center text-center text-[14px] sm:text-xl font-semibold ml-2 btn-ghost bg-linear-to-r from-[#e14486] to-[#e14459]
+                className="flex items-center text-center text-[14px] sm:text-xl font-semibold ml-2 btn-ghost bg-linear-to-r from-teal-600 to-teal-400
  bg-clip-text text-transparent "
               >
                 RoomFinder
@@ -81,7 +81,7 @@ const Navbar = () => {
                 <NavLink to="/about-us">About Us</NavLink>
               </li>
               <li>
-                <NavLink to="/profile">Routine</NavLink>
+                <NavLink to="/routines">Routine</NavLink>
               </li>
               <li>
                 <NavLink to="/rooms">Rooms</NavLink>
@@ -90,7 +90,7 @@ const Navbar = () => {
             {user ? (
               <button
                 onClick={handleLogout}
-                className="btn bg-secondary text-white rounded-full hover:scale-105"
+                className="btn bg-teal-600 text-white rounded-full hover:scale-105"
               >
                 Logout
               </button>
@@ -98,13 +98,13 @@ const Navbar = () => {
               <div className="flex gap-2">
                 <Link
                   to="/login"
-                  className="btn bg-secondary text-white rounded-full hover:scale-105"
+                  className="btn bg-teal-600 text-white rounded-full hover:scale-105"
                 >
                   LogIn
                 </Link>
                 <Link
                   to="/register"
-                  className="btn bg-secondary text-white rounded-full hover:scale-105"
+                  className="btn bg-teal-600 text-white rounded-full hover:scale-105"
                 >
                   SignUp
                 </Link>
