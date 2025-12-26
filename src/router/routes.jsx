@@ -9,6 +9,9 @@ import UploadRoutine from "../Pages/UploadRoutine";
 import UpdateRoutine from "../Pages/UpdateRoutine";
 import Rooms from "../Pages/Rooms";
 import UploadSection from "../Pages/UploadSection";
+import UploadCourse from "../Pages/UploadCourse";
+
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -51,6 +54,10 @@ export const router = createBrowserRouter([
         path: "upload-section",
         element: <UploadSection />,
       },
+      {
+        path: "upload-course",
+        element: <UploadCourse />,
+      }
     
     ],
   },
