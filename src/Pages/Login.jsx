@@ -93,7 +93,7 @@ const Login = () => {
               <Link
                 state={email}
                 to={""}
-                className=" hover:text-secondary"
+                className=" hover:text-teal-600"
               >
                 Forgot password?
               </Link>
@@ -101,7 +101,7 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full py-3   bg-secondary  font-semibold rounded-full text-white  hover:bg-secondary/80  shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 "
+              className="w-full py-3   bg-teal-600  font-semibold rounded-full text-white  hover:bg-teal-600/80  shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 "
             >
               Login
             </button>
@@ -115,7 +115,7 @@ const Login = () => {
             <div className="flex justify-center gap-4">
               <button
                 onClick={handleGoogleSignin}
-                className="btn    w-full h-12 shadow-lg hover:shadow-xl   hover:scale-105 hover:bg-secondary/80  bg-secondary text-white rounded-full transition-all duration-300 "
+                className="btn    w-full h-12 shadow-lg hover:shadow-xl   hover:scale-105 hover:bg-teal-600/80  bg-teal-600 text-white rounded-full transition-all duration-300 "
               >
                 <svg
                   aria-label="Google logo"
@@ -152,7 +152,7 @@ const Login = () => {
               Don't have an account?{" "}
               <Link
                 to={"/register"}
-                className=" font-semibold hover:text-secondary"
+                className=" font-semibold hover:text-teal-600"
               >
                 Register
               </Link>

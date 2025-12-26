@@ -137,7 +137,7 @@ const Register = () => {
             {error && <p className="text-red-600 my-2">{error}</p>}
             <button
               type="submit"
-              className="w-full mt-3 py-3 rounded-full bg-secondary text-white hover:bg-secondary/80 font-semibold   shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 "
+              className="w-full mt-3 py-3 rounded-full bg-teal-600 text-white hover:bg-teal-600/80 font-semibold   shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 "
             >
               Register
             </button>
@@ -149,7 +149,7 @@ const Register = () => {
             <div className="flex justify-center gap-4">
               <button
                 onClick={handleGoogleSignin}
-                className="btn    w-full h-12 shadow-lg hover:shadow-xl   hover:scale-105 hover:bg-secondary/80  bg-secondary text-white rounded-full transition-all duration-300 "
+                className="btn    w-full h-12 shadow-lg hover:shadow-xl   hover:scale-105 hover:bg-teal-600/80  bg-teal-600 text-white rounded-full transition-all duration-300 "
               >
                 <svg
                   aria-label="Google logo"
@@ -185,7 +185,7 @@ const Register = () => {
               Already have an account?{" "}
               <Link
                 to={"/login"}
-                className=" font-semibold hover:text-secondary"
+                className=" font-semibold hover:text-teal-600"
               >
                 Login
               </Link>
