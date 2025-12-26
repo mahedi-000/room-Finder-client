@@ -8,6 +8,7 @@ import AboutUs from "../Pages/AboutUs";
 import UploadRoutine from "../Pages/UploadRoutine";
 import UpdateRoutine from "../Pages/UpdateRoutine";
 import Rooms from "../Pages/Rooms";
+import UploadRoom from "../Pages/UploadRoom";
 
 
 export const router = createBrowserRouter([
@@ -46,6 +47,11 @@ export const router = createBrowserRouter([
       {
         path: "rooms",
         element: <Rooms />,
+
+      },
+      {
+        path: "upload-room",
+        element: <UploadRoom />,
 
       },
     
