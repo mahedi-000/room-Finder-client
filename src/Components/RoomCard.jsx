@@ -69,7 +69,6 @@ const RoomCard = ({ room }) => {
         </div>
       )}
 
-      <button className="btn bg-teal-600 hover:scale-105 transition transform text-white w-full mt-2 rounded-full">Room Details</button>
     </div>
   );
 };

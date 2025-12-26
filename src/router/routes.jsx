@@ -7,6 +7,7 @@ import Routines from "../Pages/Routines";
 import AboutUs from "../Pages/AboutUs";
 import UploadRoutine from "../Pages/UploadRoutine";
 import UpdateRoutine from "../Pages/UpdateRoutine";
+import Rooms from "../Pages/Rooms";
 
 
 export const router = createBrowserRouter([
@@ -41,6 +42,11 @@ export const router = createBrowserRouter([
       {
         path: "register",
         element: <Registration />,
+      },
+      {
+        path: "rooms",
+        element: <Rooms />,
+
       },
     
     ],
