@@ -8,7 +8,8 @@ import AboutUs from "../Pages/AboutUs";
 import UploadRoutine from "../Pages/UploadRoutine";
 import UpdateRoutine from "../Pages/UpdateRoutine";
 import Rooms from "../Pages/Rooms";
-import UploadRoom from "../Pages/UploadRoom";
+import UploadSection from "../Pages/UploadSection";
+import UploadCourse from "../Pages/UploadCourse";
 
 
 export const router = createBrowserRouter([
@@ -49,11 +50,14 @@ export const router = createBrowserRouter([
         element: <Rooms />,
 
       },
-      {
-        path: "upload-room",
-        element: <UploadRoom />,
-
+     {
+        path: "upload-section",
+        element: <UploadSection />,
       },
+      {
+        path: "upload-course",
+        element: <UploadCourse />,
+      }
     
     ],
   },
