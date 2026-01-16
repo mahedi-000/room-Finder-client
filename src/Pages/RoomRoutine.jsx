@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
 import axios from "axios";
 import { formatTime12h } from "../utils/timeFormat";
 
@@ -14,11 +13,19 @@ const DAY_ORDER = [
 ];
 
 const normalizeDay = (day = "") => day.trim().toUpperCase();
-const getTeacherName = (routine) => routine?.teacher || "";
+const getRoomName = (routine) => routine?.room?.room_number || "";
 const unique = (arr) => Array.from(new Set(arr)).filter(Boolean);
-const sortTeachers = (arr) => arr.sort();
+const sortRooms = (arr) => arr.sort();
 
-const Cell = ({ entry, onEdit, onDelete }) => {
+const Cell = ({ entry, isBreak }) => {
+  if (isBreak) {
+    return (
+      <div className="border border-gray-400 px-2 py-2 text-center text-sm font-medium">
+        Break
+      </div>
+    );
+  }
+
   if (!entry) {
     return (
       <div className="border border-gray-400 px-2 py-2 text-center text-sm">
@@ -28,79 +35,66 @@ const Cell = ({ entry, onEdit, onDelete }) => {
   }
 
   return (
-    <div className="border border-gray-400 px-2 py-2 text-center text-sm leading-tight group relative">
+    <div className="border border-gray-400 px-2 py-2 text-center text-sm leading-tight">
       <div className="font-medium">{entry.course.course_code}</div>
       <div className="text-xs">{entry.section.section_name}</div>
-      <div className="text-xs">{entry.room.room_number}</div>
-
-      <div className="absolute inset-0 backdrop-blur-md rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-        <button
-          onClick={() => onEdit(entry)}
-          className="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded transition-colors"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded transition-colors"
-        >
-          Delete
-        </button>
-      </div>
+      <div className="text-xs">{entry.teacher}</div>
     </div>
   );
 };
 
-const AboutUs = () => {
-  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
-  const navigate = useNavigate();
+const RoomRoutine = () => {
   const [routines, setRoutines] = useState([]);
-  const [teacher, setTeacher] = useState("");
+  const [room, setRoom] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API_BASE}/routines`).then((res) => {
-      const data = res.data.data.routines || [];
-      setRoutines(data);
+    setLoading(true);
+    const url = "http://localhost:3000/routines";
 
-      const teachers = sortTeachers(unique(data.map(getTeacherName)));
-      if (teachers.length) {
-        setTeacher(teachers[0]);
-      }
-
-      setLoading(false);
-    });
+    axios
+      .get(url)
+      .then((res) => {
+        const data = res.data.data.routines || [];
+        console.log(data);
+        setRoutines(data);
+        if (data.length && !room) setRoom(getRoomName(data[0]));
+      })
+      .catch((err) => {
+        console.error("Failed to fetch routines:", err);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <p className="p-6">Loading...</p>;
 
-  const teachers = sortTeachers(unique(routines.map(getTeacherName)));
+  const rooms = sortRooms(unique(routines.map(getRoomName)));
+  const activeRoom = room || rooms[0] || "";
 
-  const teacherRoutines = routines
-    .filter((r) => r.teacher === teacher)
+  const roomRoutines = routines
+    .filter((r) => getRoomName(r) === activeRoom)
     .map((r) => ({ ...r, day: normalizeDay(r.day) }));
 
   const timeSlots = unique(
-    teacherRoutines.map((r) => `${r.start_time}-${r.end_time}`)
-  ).sort();
+    roomRoutines.map((r) => `${r.start_time}-${r.end_time}`)
+  ).sort((a, b) => {
+    const [aStart] = a.split("-");
+    const [bStart] = b.split("-");
+    return aStart.localeCompare(bStart);
+  });
 
-  const days = unique(teacherRoutines.map((r) => r.day)).sort(
+  const days = unique(roomRoutines.map((r) => r.day)).sort(
     (a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b)
   );
 
   const getClass = (day, slot) => {
     const [start, end] = slot.split("-");
-    return teacherRoutines.find(
-      (r) => r.day === day && r.start_time === start && r.end_time === end
+    return roomRoutines.find(
+      (r) =>
+        r.day.toUpperCase() === day &&
+        r.start_time === start &&
+        r.end_time === end
     );
-  };
-
-  const handleEdit = (routine) => {
-    navigate(`/update-routine/${routine.id}`);
-  };
-
-  const handleDelete = (routineId) => {
-    navigate(`/delete-routine/${routineId}`);
   };
 
   return (
@@ -108,12 +102,12 @@ const AboutUs = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-block">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent mb-2">
-              Teacher Schedule
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              Room Schedule
             </h1>
-            <div className="h-1 bg-gradient-to-r from-green-600 to-teal-600 rounded-full"></div>
+            <div className="h-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></div>
           </div>
-          <p className="text-gray-600 mt-2">View class schedules by teacher</p>
+          <p className="text-gray-600 mt-2">View class schedules by room</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
@@ -121,7 +115,7 @@ const AboutUs = () => {
             <div className="flex items-center gap-3">
               <span className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-green-600"
+                  className="w-5 h-5 text-blue-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -130,19 +124,19 @@ const AboutUs = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                   />
                 </svg>
-                Select Teacher:
+                Select Room:
               </span>
               <select
-                className="select select-bordered select-lg bg-gradient-to-r from-green-50 to-teal-50 border-2 border-green-200 focus:border-green-500 w-72 font-medium text-gray-700 hover:border-teal-300 transition-all duration-200"
-                value={teacher}
-                onChange={(e) => setTeacher(e.target.value)}
+                className="select select-bordered select-lg bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 focus:border-blue-500 w-72 font-medium text-gray-700 hover:border-purple-300 transition-all duration-200"
+                value={activeRoom}
+                onChange={(e) => setRoom(e.target.value)}
               >
-                {teachers.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {rooms.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
                   </option>
                 ))}
               </select>
@@ -150,7 +144,7 @@ const AboutUs = () => {
           </div>
         </div>
 
-        {teacherRoutines.length === 0 ? (
+        {!activeRoom || roomRoutines.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center border border-gray-100">
             <div className="flex flex-col items-center gap-4">
               <svg
@@ -167,7 +161,7 @@ const AboutUs = () => {
                 />
               </svg>
               <p className="text-xl text-gray-400 font-medium">
-                No routines found for this teacher
+                No routines found for this room
               </p>
             </div>
           </div>
@@ -180,16 +174,18 @@ const AboutUs = () => {
                   gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(180px, 1fr))`,
                 }}
               >
-                <div className="bg-gradient-to-br from-green-600 to-green-700 p-4 text-white font-bold text-center flex items-center justify-center shadow-sm">
+                {/* Header - Day */}
+                <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 text-white font-bold text-center flex items-center justify-center shadow-sm">
                   <span className="text-lg">Day</span>
                 </div>
 
+                {/* Header - Time Slots */}
                 {timeSlots.map((slot) => {
                   const [s, e] = slot.split("-");
                   return (
                     <div
                       key={slot}
-                      className="bg-gradient-to-br from-teal-600 to-teal-700 p-4 text-white font-semibold text-center flex flex-col items-center justify-center shadow-sm"
+                      className="bg-gradient-to-br from-purple-600 to-purple-700 p-4 text-white font-semibold text-center flex flex-col items-center justify-center shadow-sm"
                     >
                       <div className="text-sm">{formatTime12h(s)}</div>
                       <div className="text-xs opacity-90">to</div>
@@ -198,21 +194,40 @@ const AboutUs = () => {
                   );
                 })}
 
+                {/* Body - Days and Classes */}
                 {days.map((day) => (
                   <React.Fragment key={day}>
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 font-bold text-center flex items-center justify-center text-green-900">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 font-bold text-center flex items-center justify-center text-blue-900">
                       <span className="text-base">{day.slice(0, 3)}</span>
                     </div>
 
                     {timeSlots.map((slot) => {
                       const cls = getClass(day, slot);
                       return (
-                        <Cell
+                        <div
                           key={day + slot}
-                          entry={cls}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
-                        />
+                          className={`bg-white p-3 min-h-24 flex flex-col justify-center items-center transition-all duration-200 ${
+                            cls
+                              ? "hover:bg-blue-50 hover:shadow-md cursor-pointer"
+                              : ""
+                          }`}
+                        >
+                          {cls ? (
+                            <div className="text-center space-y-1">
+                              <div className="font-bold text-blue-700 text-sm">
+                                {cls.course.course_code}
+                              </div>
+                              <div className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
+                                {cls.section.section_name}
+                              </div>
+                              <div className="text-xs text-gray-600 font-medium">
+                                {cls.teacher}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-2xl">—</span>
+                          )}
+                        </div>
                       );
                     })}
                   </React.Fragment>
@@ -226,4 +241,4 @@ const AboutUs = () => {
   );
 };
 
-export default AboutUs;
+export default RoomRoutine;

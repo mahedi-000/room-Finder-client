@@ -17,6 +17,25 @@ const UploadRoutine = () => {
   const [classType, setClassType] = useState("");
   const [teacher, setTeacher] = useState("");
 
+  const days = [
+    "SATURDAY",
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+  ];
+
+  const timeSlots = [
+    { start: "10:40", end: "11:30" },
+    { start: "11:31", end: "12:20" },
+    { start: "12:21", end: "1:10" },
+    { start: "1:51", end: "2:40" },
+    { start: "2:41", end: "3:30" },
+    { start: "3:31", end: "4:20" },
+  ];
+
   useEffect(() => {
     axios.get("/courses").then((res) => {
       console.log("courses:", res.data);
@@ -80,23 +99,30 @@ const UploadRoutine = () => {
         onSubmit={handleSubmit}
         className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto p-6"
       >
-        <input
-          className="input input-accent w-full"
-          type="text"
-          placeholder="Day"
+        <select
+          className="select select-accent w-full"
           value={day}
           onChange={(e) => setDay(e.target.value)}
           required
-        />
+        >
+          <option value="">Select Day</option>
+          {days.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
 
-        <input
-          className="input input-accent w-full"
-          type="text"
-          placeholder="Class Type"
+        <select
+          className="select select-accent w-full"
           value={classType}
           onChange={(e) => setClassType(e.target.value)}
           required
-        />
+        >
+          <option value="">Select Class Type</option>
+          <option value="THEORY">Theory</option>
+          <option value="LAB">Lab</option>
+        </select>
 
         <input
           className="input input-accent w-full"

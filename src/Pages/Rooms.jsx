@@ -1,81 +1,230 @@
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import RoomCard from "../Components/RoomCard";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router";
+import { formatTime12h } from "../utils/timeFormat";
 
 const Rooms = () => {
-  const rooms = [
-    {
-      roomNo: "C102",
-      type: "Classroom",
-      status: "occupied",
-      teacher: "JAA",
-      subject: "Data Structure",
-      section: "3DM",
-      time: "10:40 - 11:30",
-    },
-    {
-      roomNo: "C101",
-      type: "Lab",
-      status: "rescheduled",
-      teacher: "JAA",
-      subject: "C Programming Lab",
-      section: "1BM",
-      time: "11:00 - 11:50",
-    },
-    {
-      roomNo: "CX301",
-      type: "Classroom",
-      status: "maintenance",
-      freeTill: "11:50 PM",
-    },
-    {
-      roomNo: "Cx302",
-      type: "Classroom",
-      status: "occupied",
-      teacher: "MKIS",
-      subject: "Theory Of Computation",
-      section: "4AM",
-      time: "12:20 - 01:10",
-    },
-    {
-      roomNo: "C402",
-      type: "Lab",
-      status: "free",
-      teacher: "KTS",
-      subject: "Networks Lab",
-      section: "7BM",
-      freeTill: "12:20 pm",
-    },
-    {
-      roomNo: "CX503",
-      type: "Classroom",
-      status: "rescheduled",
-      teacher: "TA",
-      subject: "Computer Algorithms",
-      section: "4DM",
-      time: "10:00 - 10:50",
-    },
-    
-  ];
+  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const navigate = useNavigate();
+  const [rooms, setRooms] = useState([]);
+  const [routines, setRoutines] = useState([]);
+  const [roomStatuses, setRoomStatuses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const freeRooms = rooms.filter((room) => room.status === "free");
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        console.log("📡 Loading data from API_BASE:", API_BASE);
+
+        const [roomsRes, routinesRes] = await Promise.all([
+          axios.get(`${API_BASE}/rooms`),
+          axios.get(`${API_BASE}/routines`),
+        ]);
+
+        const roomsData = roomsRes.data?.data?.rooms || [];
+        const routinesData = routinesRes.data?.data?.routines || [];
+
+        console.log("✅ Rooms loaded:", roomsData.length, "rooms");
+        console.log("✅ Routines loaded:", routinesData.length, "routines");
+
+        setRooms(roomsData);
+        setRoutines(routinesData);
+
+        try {
+          const statusesRes = await axios.get(`${API_BASE}/roomStatuses`);
+          console.log("🔍 Room statuses API response:", statusesRes.data);
+
+          const statusesData = Array.isArray(
+            statusesRes.data?.data?.roomStatuses
+          )
+            ? statusesRes.data.data.roomStatuses
+            : [];
+
+          console.log(
+            "✅ Room statuses loaded:",
+            statusesData.length,
+            "statuses"
+          );
+          console.log("Status data:", statusesData);
+
+          setRoomStatuses(statusesData);
+        } catch (statusError) {
+          console.error("❌ Room statuses error:", statusError.message);
+          console.error("Full error:", statusError);
+          setRoomStatuses([]);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load rooms");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [API_BASE]);
+
+  const getTodayDate = () => {
+    const now = new Date();
+    return now.toISOString().split("T")[0];
+  };
+
+  const getRoomStatusToday = (roomId) => {
+    const todayDate = getTodayDate();
+    return roomStatuses.find(
+      (s) => s.room_id === roomId && s.status_date === todayDate
+    );
+  };
+
+  const getAvailableRooms = () => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes()
+    ).padStart(2, "0")}`;
+    const todayDate = getTodayDate();
+
+    const breakStart = "13:10";
+    const breakEnd = "13:50";
+    const isBreakTime = currentTime >= breakStart && currentTime < breakEnd;
+
+    if (isBreakTime) {
+      return rooms;
+    }
+
+    const businessStart = "10:40";
+    const businessEnd = "16:40";
+    const isBusinessHours =
+      currentTime >= businessStart && currentTime < businessEnd;
+
+    const filtered = rooms.filter((room) => {
+      if (isBusinessHours) {
+        const dbStatus = roomStatuses.find((s) => {
+          const statusDateOnly = s.status_date?.split("T")[0];
+          return (
+            (s.room?.id === room.id || s.room_id === room.id) &&
+            statusDateOnly === todayDate
+          );
+        });
+
+        if (dbStatus) {
+          return dbStatus.status === "FREE";
+        }
+        return false;
+      }
+
+      return true;
+    });
+
+    return filtered;
+  };
+
+  const getNextClassTime = (roomId) => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes()
+    ).padStart(2, "0")}`;
+    const today = now
+      .toLocaleString("en-US", { weekday: "long" })
+      .toUpperCase();
+
+    const upcomingClasses = routines
+      .filter((r) => {
+        const dayMatch = r.day?.trim().toUpperCase() === today;
+        const roomMatch = r.room?.id === roomId;
+        const timeMatch = r.start_time > currentTime;
+        return dayMatch && roomMatch && timeMatch;
+      })
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+    return upcomingClasses.length > 0 ? upcomingClasses[0].start_time : null;
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading rooms...</div>;
+  }
+
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
+    now.getMinutes()
+  ).padStart(2, "0")}`;
+  const todayDate = getTodayDate();
+
+  const breakStart = "13:10";
+  const breakEnd = "13:50";
+  const isBreakTime = currentTime >= breakStart && currentTime < breakEnd;
+
+  const businessStart = "10:40";
+  const businessEnd = "16:40";
+  const isBusinessHours =
+    currentTime >= businessStart && currentTime < businessEnd;
+
+  const displayRooms = isBreakTime
+    ? rooms 
+    : isBusinessHours
+    ? rooms.filter((room) => {
+        const dbStatus = roomStatuses.find((s) => {
+          const statusDateOnly = s.status_date?.split("T")[0];
+          return (
+            (s.room?.id === room.id || s.room_id === room.id) &&
+            statusDateOnly === todayDate
+          );
+        });
+        return !!dbStatus; 
+      })
+    : rooms;
+
+  const availableRooms = getAvailableRooms();
 
   return (
     <div className="px-6 py-6">
+      {availableRooms.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-6">
+          <h2 className="font-semibold text-lg mb-3 text-green-900">
+            Available Rooms ({availableRooms.length}):
+            {isBreakTime && (
+              <span className="ml-2 text-sm bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full">
+                Break Time (1:10 PM - 1:50 PM)
+              </span>
+            )}
+          </h2>
+          <div className="space-y-2">
+            {availableRooms.map((room) => {
+              const nextClassTime = getNextClassTime(room.id);
+              return (
+                <div
+                  key={room.id}
+                  className="flex justify-between items-center hover:bg-green-100 p-2 rounded cursor-pointer transition-colors"
+                >
+                  <span className="font-semibold text-gray-600">
+                    <span className="text-green-600 font-bold">
+                      {room.room_number}
+                    </span>{" "}
+                    - {room.room_type}
+                  </span>
+                  <span className="text-sm text-green-600 font-medium">
+                    {nextClassTime
+                      ? `Free till ${formatTime12h(nextClassTime)}`
+                      : "Available all day"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-4">
-        <h2 className="font-semibold text-lg mb-2">Rooms Available:</h2>
-
-        {freeRooms.map((room) => (
-          <p key={room.roomNo} className="font-semibold text-gray-500">
-            <span className="text-green-600 font-semibold">{room.roomNo}</span>{" "}
-            is free till {room.freeTill}
-          </p>
-        ))}
-
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {rooms.map((room, index) => (
-          <RoomCard key={index} room={room} />
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">All Rooms</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {displayRooms.map((room) => (
+          <RoomCard
+            key={room.id}
+            room={room}
+            routines={routines}
+            roomStatuses={roomStatuses}
+          />
         ))}
       </div>
     </div>

@@ -7,11 +7,16 @@ import Routines from "../Pages/Routines";
 import AboutUs from "../Pages/AboutUs";
 import UploadRoutine from "../Pages/UploadRoutine";
 import UpdateRoutine from "../Pages/UpdateRoutine";
+import DeleteRoutine from "../Pages/DeleteRoutine";
 import Rooms from "../Pages/Rooms";
 import UploadSection from "../Pages/UploadSection";
 import UploadCourse from "../Pages/UploadCourse";
 import UploadRoom from "../Pages/UploadRoom";
- 
+import RoomRoutine from "../Pages/RoomRoutine";
+import RoomDetail from "../Pages/RoomDetail";
+import UploadRoomStatus from "../Pages/UploadRoomStatus";
+import UpdateRoomStatus from "../Pages/UpdateRoomStatus";
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -38,6 +43,10 @@ export const router = createBrowserRouter([
         element: <UpdateRoutine />,
       },
       {
+        path: "delete-routine/:id",
+        element: <DeleteRoutine />,
+      },
+      {
         path: "login",
         element: <Login />,
       },
@@ -48,11 +57,9 @@ export const router = createBrowserRouter([
       {
         path: "rooms",
         element: <Rooms />,
-
       },
 
-    
-     {
+      {
         path: "upload-section",
         element: <UploadSection />,
       },
@@ -62,9 +69,21 @@ export const router = createBrowserRouter([
         element: <UploadCourse />,
       },
 
-        {
+      {
         path: "upload-room",
         element: <UploadRoom />,
+      },
+      {
+        path: "room-routine",
+        element: <RoomRoutine />,
+      },
+      {
+        path: "upload-room-status",
+        element: <UploadRoomStatus />,
+      },
+      {
+        path: "update-room-status",
+        element: <UpdateRoomStatus />,
       },
     ],
   },
