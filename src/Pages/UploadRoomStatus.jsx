@@ -62,12 +62,12 @@ const UploadRoomStatus = () => {
     { day: "THURSDAY", start_time: "1:51", end_time: "2:40" },
     { day: "THURSDAY", start_time: "2:41", end_time: "3:30" },
     { day: "THURSDAY", start_time: "3:31", end_time: "4:40" },
-    { day: "FRIDAY", start_time: "10:40", end_time: "11:30" },
-    { day: "FRIDAY", start_time: "11:31", end_time: "12:20" },
-    { day: "FRIDAY", start_time: "12:21", end_time: "1:10" },
-    { day: "FRIDAY", start_time: "1:51", end_time: "2:40" },
-    { day: "FRIDAY", start_time: "2:41", end_time: "3:30" },
-    { day: "FRIDAY", start_time: "3:31", end_time: "5:20" },
+    { day: "FRIDAY", start_time: "07:00", end_time: "07:50" },
+    { day: "FRIDAY", start_time: "07:51", end_time: "08:40" },
+    { day: "FRIDAY", start_time: "08:41", end_time: "09:30" },
+    { day: "FRIDAY", start_time: "09:31", end_time: "10:20" },
+    { day: "FRIDAY", start_time: "10:21", end_time: "11:10" },
+    { day: "FRIDAY", start_time: "11:11", end_time: "11:59" },
   ];
 
   const convertTo24Hour = (time12h) => {
@@ -225,10 +225,7 @@ const UploadRoomStatus = () => {
       return;
     }
 
-    if (
-      (formData.status === "OCCUPIED" || formData.status === "RESCHEDULED") &&
-      (!formData.start_time || !formData.end_time)
-    ) {
+    if (!formData.start_time || !formData.end_time) {
       toast.error("Please select a time slot");
       return;
     }
@@ -238,13 +235,6 @@ const UploadRoomStatus = () => {
       return;
     }
 
-    if (formData.status === "OCCUPIED" || formData.status === "RESCHEDULED") {
-      if (!formData.routine_id) {
-        toast.error(`Please select a routine for ${formData.status} status`);
-        return;
-      }
-    }
-
     const payload = {
       room_id: formData.room_id,
       status: formData.status,
@@ -252,9 +242,12 @@ const UploadRoomStatus = () => {
       updated_by: user.uid,
       day_of_week: formData.day,
       is_recurring: formData.recurring,
+      start_time: convertTo24Hour(formData.start_time),
+      end_time: convertTo24Hour(formData.end_time),
     };
 
-    if (formData.routine_id && formData.routine_id.trim() !== "") {
+    // Only include routine_id if it exists (Zod doesn't accept null, only undefined)
+    if (formData.routine_id) {
       payload.routine_id = formData.routine_id;
     }
 
@@ -387,9 +380,20 @@ const UploadRoomStatus = () => {
         )}
 
         {formData.room_id && formData.start_time && formData.end_time && (
-          <div className="bg-blue-50 border border-blue-200 rounded p-3">
-            <div className="font-semibold text-blue-900 mb-2">
-              Selected Time Slot Details
+          <div className={`border rounded p-3 ${
+            (formData.status === "OCCUPIED" || formData.status === "RESCHEDULED")
+              ? 'bg-blue-50 border-blue-200'
+              : 'bg-green-50 border-green-200'
+          }`}>
+            <div className={`font-semibold mb-2 ${
+              (formData.status === "OCCUPIED" || formData.status === "RESCHEDULED")
+                ? 'text-blue-900'
+                : 'text-green-900'
+            }`}>
+              {(formData.status === "OCCUPIED" || formData.status === "RESCHEDULED")
+                ? `📋 Class Being Marked as ${formData.status}:`
+                : `🕐 Time Slot for ${formData.status}:`
+              }
             </div>
             {(() => {
               const matchedRoutine = getRoutineForTimeSlot(
@@ -399,41 +403,66 @@ const UploadRoomStatus = () => {
                 formData.end_time
               );
 
-              return matchedRoutine ? (
-                <div className="text-sm space-y-1">
+              // For OCCUPIED/RESCHEDULED, show class details
+              if (formData.status === "OCCUPIED" || formData.status === "RESCHEDULED") {
+                return matchedRoutine ? (
+                  <div className="text-sm space-y-1">
+                    <div>
+                      <span className="text-gray-600">Time:</span>{" "}
+                      <span className="font-medium">
+                        {to12Hour(matchedRoutine.start_time)} -{" "}
+                        {to12Hour(matchedRoutine.end_time)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Day:</span>{" "}
+                      <span className="font-medium">{matchedRoutine.day}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Course:</span>{" "}
+                      <span className="font-medium">
+                        {matchedRoutine.course?.course_name}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Teacher:</span>{" "}
+                      <span className="font-medium">
+                        {matchedRoutine.teacher}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Section:</span>{" "}
+                      <span className="font-medium">
+                        {matchedRoutine.section?.section_name}
+                      </span>
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2 italic">
+                      This class info will be displayed on the room card.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-red-700">
+                    ⚠️ No class scheduled for this time slot. Select OCCUPIED/RESCHEDULED only for slots with scheduled classes.
+                  </div>
+                );
+              }
+              
+              // For FREE/MAINTENANCE, just show the time slot
+              return (
+                <div className="text-sm space-y-1 text-green-800">
                   <div>
                     <span className="text-gray-600">Time:</span>{" "}
                     <span className="font-medium">
-                      {to12Hour(matchedRoutine.start_time)} -{" "}
-                      {to12Hour(matchedRoutine.end_time)}
+                      {formData.start_time} - {formData.end_time}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-600">Day:</span>{" "}
-                    <span className="font-medium">{matchedRoutine.day}</span>
+                    <span className="font-medium">{formData.day}</span>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Course:</span>{" "}
-                    <span className="font-medium">
-                      {matchedRoutine.course?.course_name}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Teacher:</span>{" "}
-                    <span className="font-medium">
-                      {matchedRoutine.teacher}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Section:</span>{" "}
-                    <span className="font-medium">
-                      {matchedRoutine.section?.section_name}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-green-700">
-                  No class scheduled for this time slot
+                  <p className="text-xs text-green-600 mt-2 italic">
+                    This applies to the room during this time slot, not tied to any class.
+                  </p>
                 </div>
               );
             })()}
@@ -574,6 +603,38 @@ const UploadRoomStatus = () => {
             <option value="MAINTENANCE">Maintenance</option>
             <option value="RESCHEDULED">Rescheduled</option>
           </select>
+          
+          {/* Status explanation */}
+          <div className={`mt-3 border rounded-lg p-3 text-sm ${
+            formData.status === "OCCUPIED" || formData.status === "RESCHEDULED" 
+              ? 'bg-blue-50 border-blue-200' 
+              : 'bg-green-50 border-green-200'
+          }`}>
+            {formData.status === "OCCUPIED" && (
+              <div className="text-blue-800">
+                <p className="font-semibold">📚 Class-Specific Status</p>
+                <p>Marks a scheduled class as currently taking place. The class details (course, teacher, section) will be shown on the room card.</p>
+              </div>
+            )}
+            {formData.status === "RESCHEDULED" && (
+              <div className="text-blue-800">
+                <p className="font-semibold">📚 Class-Specific Status</p>
+                <p>Marks a scheduled class as rescheduled to a different time/room. The original class info will be shown.</p>
+              </div>
+            )}
+            {formData.status === "FREE" && (
+              <div className="text-green-800">
+                <p className="font-semibold">🏠 Room-Only Status</p>
+                <p>Marks the room as available during this time slot. No class information needed.</p>
+              </div>
+            )}
+            {formData.status === "MAINTENANCE" && (
+              <div className="text-green-800">
+                <p className="font-semibold">🏠 Room-Only Status</p>
+                <p>Marks the room as under maintenance. The room will be unavailable during this time.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">

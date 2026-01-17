@@ -3,11 +3,14 @@ import { useNavigate } from "react-router";
 import { formatTime12h } from "../utils/timeFormat";
 import axios from "axios";
 import toast from "react-hot-toast";
+import useRole from "../hooks/useRole";
 
 const RoomCard = ({ room, routines, roomStatuses }) => {
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL;
   const [currentClass, setCurrentClass] = useState(null);
+  const [currentUserRole] = useRole();
+  const canUpdateStatus = currentUserRole && currentUserRole !== "STUDENT";
 
   useEffect(() => {
     console.log("🔍 RoomCard Debug:");
@@ -28,54 +31,82 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
     console.log("Today day:", today);
 
     const businessStart = "10:40";
-    const businessEnd = "17:40";
+    const businessEnd = "16:20";
     const isBusinessHours =
       currentTime >= businessStart && currentTime < businessEnd;
 
     console.log("Is business hours:", isBusinessHours);
 
     if (isBusinessHours) {
-      const dbStatus = roomStatuses?.find((s) => {
+      
+      const matchingStatuses = roomStatuses?.filter((s) => {
         const statusDateOnly = s.status_date?.split("T")[0];
+        const roomMatch = s.room?.id === room.id || s.room_id === room.id;
 
-        const exactDateMatch =
-          (s.room?.id === room.id || s.room_id === room.id) &&
-          statusDateOnly === todayDate;
+        const exactDateMatch = roomMatch && statusDateOnly === todayDate;
 
         const recurringMatch =
-          s.is_recurring &&
-          (s.room?.id === room.id || s.room_id === room.id) &&
-          s.day_of_week === today;
+          s.is_recurring && roomMatch && s.day_of_week === today;
 
-        const matches = exactDateMatch || recurringMatch;
-
-        if (matches) {
-          console.log("✅ Found matching status:", s);
-
-          if (s.status === "OCCUPIED" && s.routine) {
-            const routineActive =
-              currentTime >= s.routine.start_time &&
-              currentTime < s.routine.end_time;
-            console.log(
-              `Routine time check: ${s.routine.start_time} to ${s.routine.end_time}, current: ${currentTime}, active: ${routineActive}`
-            );
-            if (!routineActive) {
-              console.log(
-                "❌ Routine time doesn't match current time, skipping"
-              );
-              return false;
-            }
-          }
+       
+        if (roomMatch) {
+          console.log(`Status for this room:`, {
+            status: s.status,
+            start_time: s.start_time,
+            end_time: s.end_time,
+            status_date: s.status_date,
+            statusDateOnly,
+            todayDate,
+            is_recurring: s.is_recurring,
+            day_of_week: s.day_of_week,
+            today,
+            exactDateMatch,
+            recurringMatch,
+            hasRoutine: !!s.routine
+          });
         }
-        return matches;
-      });
 
-      console.log("DB Status found:", dbStatus);
+        return exactDateMatch || recurringMatch;
+      }) || [];
+
+      console.log("All matching statuses:", matchingStatuses);
+
+      
+      let foundActiveStatus = null;
+      for (const s of matchingStatuses) {
+        console.log(`Processing status:`, s.status, `start:`, s.start_time, `end:`, s.end_time);
+        
+        
+        if (s.start_time && s.end_time) {
+          let timeActive;
+         
+          if (s.end_time < s.start_time) {
+            timeActive = currentTime >= s.start_time || currentTime < s.end_time;
+          } else {
+            timeActive = currentTime >= s.start_time && currentTime < s.end_time;
+          }
+          console.log(
+            `Checking ${s.status} time slot: ${s.start_time} to ${s.end_time}, current: ${currentTime}, active: ${timeActive}`
+          );
+          if (timeActive) {
+            foundActiveStatus = s;
+            break;
+          }
+          continue;
+        }
+       
+        console.log(`Status ${s.status} has no valid time range, skipping`);
+      }
+
+      
+      const dbStatus = foundActiveStatus;
+
+      console.log("Selected DB Status:", dbStatus);
 
       if (dbStatus) {
         setCurrentClass(dbStatus);
       } else {
-
+        
         setCurrentClass({ status: "NO_RECORD", isNoRecord: true });
       }
       return;
@@ -167,29 +198,142 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
                 {currentClass.routine.section?.section_name}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="font-medium">
-                {formatTime12h(currentClass.routine.start_time)} -{" "}
-                {formatTime12h(currentClass.routine.end_time)}
-              </span>
-            </div>
+            
+            {/* For RESCHEDULED: Show both original and new time */}
+            {currentClass.status === "RESCHEDULED" && currentClass.start_time && currentClass.end_time ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span className="font-medium line-through">
+                    Original: {formatTime12h(currentClass.routine.start_time)} - {formatTime12h(currentClass.routine.end_time)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-blue-600">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span className="font-semibold">
+                    New: {formatTime12h(currentClass.start_time)} - {formatTime12h(currentClass.end_time)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-gray-600">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {formatTime12h(currentClass.start_time || currentClass.routine.start_time)} -{" "}
+                  {formatTime12h(currentClass.end_time || currentClass.routine.end_time)}
+                </span>
+              </div>
+            )}
+          </>
+        ) : currentClass.teacher || currentClass.course || currentClass.section ? (
+       
+          <>
+            {currentClass.teacher && (
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Teacher:</span>
+                <span className="text-gray-800 font-semibold">
+                  {currentClass.teacher}
+                </span>
+              </div>
+            )}
+            {currentClass.course && (
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Subject:</span>
+                <span className="text-gray-800 font-semibold">
+                  {currentClass.course.course_name}
+                </span>
+              </div>
+            )}
+            {currentClass.section && (
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Section:</span>
+                <span className="text-gray-800 font-semibold">
+                  {currentClass.section.section_name}
+                </span>
+              </div>
+            )}
+            {currentClass.start_time && currentClass.end_time && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {formatTime12h(currentClass.start_time)} -{" "}
+                  {formatTime12h(currentClass.end_time)}
+                </span>
+              </div>
+            )}
           </>
         ) : (
           <div className="text-gray-600 font-medium">
             Status: <span className="font-bold">{currentClass.status}</span>
+            {currentClass.start_time && currentClass.end_time && (
+              <div className="flex items-center gap-2 mt-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {formatTime12h(currentClass.start_time)} -{" "}
+                  {formatTime12h(currentClass.end_time)}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -211,48 +355,50 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
 
       <p className="text-gray-600 text-sm">{room.room_type}</p>
 
-      {/* Update Button - Available for all rooms */}
-      <div className="flex gap-2">
-        <button
-          onClick={() =>
-            navigate("/update-room-status", {
-              state: {
-                roomStatus: currentClass,
-                room: room,
-                routine: currentClass?.routine,
-              },
-            })
-          }
-          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
-        >
-          Update Status
-        </button>
-        {currentClass && currentClass.isManualStatus && (
+      {/* Update Button - Available for ADMIN, ASSISTANT_ADMIN, TEACHER */}
+      {canUpdateStatus && (
+        <div className="flex gap-2">
           <button
-            onClick={async () => {
-              if (
-                window.confirm(
-                  "Are you sure you want to delete this room status?"
-                )
-              ) {
-                try {
-                  await axios.delete(
-                    `${API_BASE}/roomStatuses/${currentClass.id}`
-                  );
-                  toast.success("Room status deleted successfully!");
-                  window.location.reload();
-                } catch (error) {
-                  console.error("Error deleting room status:", error);
-                  toast.error("Failed to delete room status");
-                }
-              }
-            }}
-            className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
+            onClick={() =>
+              navigate("/update-room-status", {
+                state: {
+                  roomStatus: currentClass,
+                  room: room,
+                  routine: currentClass?.routine,
+                },
+              })
+            }
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
           >
-            Delete Status
+            Update Status
           </button>
-        )}
-      </div>
+          {currentClass && currentClass.isManualStatus && (
+            <button
+              onClick={async () => {
+                if (
+                  window.confirm(
+                    "Are you sure you want to delete this room status?"
+                  )
+                ) {
+                  try {
+                    await axios.delete(
+                      `${API_BASE}/roomStatuses/${currentClass.id}`
+                    );
+                    toast.success("Room status deleted successfully!");
+                    window.location.reload();
+                  } catch (error) {
+                    console.error("Error deleting room status:", error);
+                    toast.error("Failed to delete room status");
+                  }
+                }
+              }}
+              className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
+            >
+              Delete Status
+            </button>
+          )}
+        </div>
+      )}
 
       {detailsBlock}
     </div>

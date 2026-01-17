@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 const Home = () => {
   return (
     <>
-      <header className="bg-gradient-to-b from-teal-50 to-white">
+      <header >
         <div className="max-w-6xl mx-auto px-6 py-20 sm:py-28 text-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 leading-tight">
             Find Your Perfect
@@ -24,7 +24,7 @@ const Home = () => {
           <div className="mt-8 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
        
             <div className="bg-white border rounded-xl shadow-sm p-6 flex gap-6 items-start">
-              <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <div className="w-16 h-8 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -36,9 +36,9 @@ const Home = () => {
             </div>
 
             <div className="bg-white border rounded-xl shadow-sm p-6 flex gap-6 items-start">
-              <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <div className="w-16 h-8 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 12.414a4 4 0 10-5.657 5.657l4.243 4.243a8 8 0 0011.314-11.314l-4.243 4.243z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
               <div>
@@ -49,7 +49,7 @@ const Home = () => {
 
   
             <div className="bg-white border rounded-xl shadow-sm p-6 flex gap-6 items-start">
-              <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <div className="w-16 h-8 flex items-center justify-center rounded-lg bg-teal-50 text-teal-600">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>

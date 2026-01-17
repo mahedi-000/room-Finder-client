@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import LoadingSpinner from "../Components/LoadingSpinner";
 import { formatTime12h } from "../utils/timeFormat";
 
 const DAY_ORDER = [
@@ -66,7 +67,7 @@ const RoomRoutine = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading) return <LoadingSpinner />;
 
   const rooms = sortRooms(unique(routines.map(getRoomName)));
   const activeRoom = room || rooms[0] || "";
@@ -166,12 +167,17 @@ const RoomRoutine = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 border border-gray-100">
+            {/* Mobile scroll hint */}
+            <div className="block sm:hidden text-center text-xs text-gray-500 mb-2">
+              ← Swipe to view schedule →
+            </div>
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
               <div
                 className="grid gap-px bg-gray-200 rounded-lg overflow-hidden"
                 style={{
                   gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(180px, 1fr))`,
+                  minWidth: 'fit-content'
                 }}
               >
                 {/* Header - Day */}

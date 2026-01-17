@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import axios from "axios";
+import LoadingSpinner from "../Components/LoadingSpinner";
 import { formatTime12h } from "../utils/timeFormat";
+import useRole from "../hooks/useRole";
+
 
 const DAY_ORDER = [
   "SATURDAY",
@@ -15,7 +18,7 @@ const DAY_ORDER = [
 
 const normalizeDay = (day = "") => day.trim().toUpperCase();
 
-const Cell = ({ entry, onEdit, onDelete }) => {
+const Cell = ({ entry, onEdit, onDelete, isAdmin }) => {
   if (!entry) {
     return (
       <div className="border border-gray-400 px-2 py-2 text-center text-sm">
@@ -30,25 +33,31 @@ const Cell = ({ entry, onEdit, onDelete }) => {
       <div className="text-xs">{entry.room.room_number}</div>
       <div className="text-xs">{entry.teacher}</div>
 
-      <div className="absolute inset-0 backdrop-blur-md rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-        <button
-          onClick={() => onEdit(entry)}
-          className="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded transition-colors"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded transition-colors"
-        >
-          Delete
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="absolute inset-0 backdrop-blur-md rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+          <button
+            onClick={() => onEdit(entry)}
+            className="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(entry.id)}
+            className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 };
 
 const SectionRoutine = () => {
+
+  const [currentUserRole] = useRole();
+  const isAdmin = currentUserRole === "ADMIN";
+
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const navigate = useNavigate();
   const [sections, setSections] = useState([]);
@@ -130,8 +139,8 @@ const SectionRoutine = () => {
   };
 
 
-  if (loading && sections.length === 0)
-    return <p className="p-6">Loading...</p>;
+  if (loading)
+    return <LoadingSpinner />;
 
   const normalized = routines.map((r) => ({ ...r, day: normalizeDay(r.day) }));
 
@@ -153,6 +162,7 @@ const SectionRoutine = () => {
   return (
     <div className="min-h-screen  p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        
         <div className="text-center mb-8">
           <div className="inline-block">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">
@@ -219,12 +229,17 @@ const SectionRoutine = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 border border-gray-100">
+            {/* Mobile scroll hint */}
+            <div className="block sm:hidden text-center text-xs text-gray-500 mb-2">
+              ← Swipe to view schedule →
+            </div>
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
               <div
                 className="grid gap-px bg-gray-200 rounded-lg overflow-hidden"
                 style={{
                   gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(200px, 1fr))`,
+                  minWidth: 'fit-content'
                 }}
               >
                 <div className="bg-gradient-to-br from-orange-600 to-orange-700 p-4 text-white font-bold text-center flex items-center justify-center shadow-sm">
@@ -259,6 +274,7 @@ const SectionRoutine = () => {
                           entry={cls}
                           onEdit={handleEdit}
                           onDelete={handleDelete}
+                          isAdmin={isAdmin}
                         />
                       );
                     })}

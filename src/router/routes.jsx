@@ -4,7 +4,7 @@ import Home from "../Pages/Home";
 import Login from "../Pages/Login";
 import Registration from "../Pages/Registration";
 import Routines from "../Pages/Routines";
-import AboutUs from "../Pages/AboutUs";
+import TeacherRoutine from "../Pages/TeacherRoutine";
 import UploadRoutine from "../Pages/UploadRoutine";
 import UpdateRoutine from "../Pages/UpdateRoutine";
 import DeleteRoutine from "../Pages/DeleteRoutine";
@@ -13,10 +13,13 @@ import UploadSection from "../Pages/UploadSection";
 import UploadCourse from "../Pages/UploadCourse";
 import UploadRoom from "../Pages/UploadRoom";
 import RoomRoutine from "../Pages/RoomRoutine";
-import RoomDetail from "../Pages/RoomDetail";
 import UploadRoomStatus from "../Pages/UploadRoomStatus";
 import UpdateRoomStatus from "../Pages/UpdateRoomStatus";
-
+import PrivateRoute from "./PrivateRoute";
+import TeacherRoute from "./TeacherRoute";
+import AdminRoute from "./adminRoute";
+import AllUsers from "../Pages/AllUsers";
+import AdminPanel from "../Pages/AdminPanel";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -27,24 +30,41 @@ export const router = createBrowserRouter([
         element: <Home />,
       },
       {
-        path: "about-us",
-        element: <AboutUs />,
+        path: "teacher-routine",
+        element: <TeacherRoutine />,
       },
       {
         path: "routines",
-        element: <Routines />,
+        element: 
+          <Routines />,
+      },
+      {
+        path:'room-routine',
+        element:<RoomRoutine/>
       },
       {
         path: "upload-routine",
-        element: <UploadRoutine />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <UploadRoutine />
+          </AdminRoute>
+        </PrivateRoute>,
       },
       {
         path: "update-routine/:id",
-        element: <UpdateRoutine />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <UpdateRoutine />
+          </AdminRoute>
+        </PrivateRoute>,
       },
       {
         path: "delete-routine/:id",
-        element: <DeleteRoutine />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <DeleteRoutine />
+          </AdminRoute>
+        </PrivateRoute>,
       },
       {
         path: "login",
@@ -61,17 +81,29 @@ export const router = createBrowserRouter([
 
       {
         path: "upload-section",
-        element: <UploadSection />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <UploadSection />
+          </AdminRoute>
+        </PrivateRoute>,
       },
 
       {
         path: "upload-course",
-        element: <UploadCourse />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <UploadCourse />
+          </AdminRoute>
+        </PrivateRoute>,
       },
 
       {
         path: "upload-room",
-        element: <UploadRoom />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <UploadRoom />
+          </AdminRoute>
+        </PrivateRoute>,
       },
       {
         path: "room-routine",
@@ -79,11 +111,33 @@ export const router = createBrowserRouter([
       },
       {
         path: "upload-room-status",
-        element: <UploadRoomStatus />,
+        element: <PrivateRoute>
+          <AdminRoute>
+            <UploadRoomStatus />
+          </AdminRoute>
+        </PrivateRoute>,
       },
       {
         path: "update-room-status",
-        element: <UpdateRoomStatus />,
+        element: <PrivateRoute>
+            <UpdateRoomStatus /> 
+        </PrivateRoute>,
+      },
+      {
+        path: "all-users",
+        element: <PrivateRoute>
+          <AdminRoute>
+            <AllUsers />
+          </AdminRoute>
+        </PrivateRoute>,
+      },
+      {
+        path: "admin",
+        element: <PrivateRoute>
+          <AdminRoute>
+            <AdminPanel />
+          </AdminRoute>
+        </PrivateRoute>,
       },
     ],
   },

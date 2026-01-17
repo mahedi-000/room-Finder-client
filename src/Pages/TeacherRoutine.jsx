@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
 import axios from "axios";
+import LoadingSpinner from "../Components/LoadingSpinner";
 import { formatTime12h } from "../utils/timeFormat";
 
 const DAY_ORDER = [
@@ -18,7 +18,7 @@ const getTeacherName = (routine) => routine?.teacher || "";
 const unique = (arr) => Array.from(new Set(arr)).filter(Boolean);
 const sortTeachers = (arr) => arr.sort();
 
-const Cell = ({ entry, onEdit, onDelete }) => {
+const Cell = ({ entry }) => {
   if (!entry) {
     return (
       <div className="border border-gray-400 px-2 py-2 text-center text-sm">
@@ -28,32 +28,16 @@ const Cell = ({ entry, onEdit, onDelete }) => {
   }
 
   return (
-    <div className="border border-gray-400 px-2 py-2 text-center text-sm leading-tight group relative">
+    <div className="border border-gray-400 px-2 py-2 text-center text-sm leading-tight">
       <div className="font-medium">{entry.course.course_code}</div>
       <div className="text-xs">{entry.section.section_name}</div>
       <div className="text-xs">{entry.room.room_number}</div>
-
-      <div className="absolute inset-0 backdrop-blur-md rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-        <button
-          onClick={() => onEdit(entry)}
-          className="px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded transition-colors"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded transition-colors"
-        >
-          Delete
-        </button>
-      </div>
     </div>
   );
 };
 
-const AboutUs = () => {
+const TeacherRoutine = () => {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
-  const navigate = useNavigate();
   const [routines, setRoutines] = useState([]);
   const [teacher, setTeacher] = useState("");
   const [loading, setLoading] = useState(true);
@@ -72,7 +56,7 @@ const AboutUs = () => {
     });
   }, []);
 
-  if (loading) return <p className="p-6">Loading...</p>;
+  if (loading) return <LoadingSpinner />;
 
   const teachers = sortTeachers(unique(routines.map(getTeacherName)));
 
@@ -93,14 +77,6 @@ const AboutUs = () => {
     return teacherRoutines.find(
       (r) => r.day === day && r.start_time === start && r.end_time === end
     );
-  };
-
-  const handleEdit = (routine) => {
-    navigate(`/update-routine/${routine.id}`);
-  };
-
-  const handleDelete = (routineId) => {
-    navigate(`/delete-routine/${routineId}`);
   };
 
   return (
@@ -172,12 +148,17 @@ const AboutUs = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 border border-gray-100">
+           
+            <div className="block sm:hidden text-center text-xs text-gray-500 mb-2">
+              ← Swipe to view schedule →
+            </div>
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
               <div
                 className="grid gap-px bg-gray-200 rounded-lg overflow-hidden"
                 style={{
                   gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(180px, 1fr))`,
+                  minWidth: 'fit-content'
                 }}
               >
                 <div className="bg-gradient-to-br from-green-600 to-green-700 p-4 text-white font-bold text-center flex items-center justify-center shadow-sm">
@@ -210,8 +191,6 @@ const AboutUs = () => {
                         <Cell
                           key={day + slot}
                           entry={cls}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
                         />
                       );
                     })}
@@ -226,4 +205,4 @@ const AboutUs = () => {
   );
 };
 
-export default AboutUs;
+export default TeacherRoutine;

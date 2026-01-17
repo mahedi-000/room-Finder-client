@@ -2,11 +2,13 @@ import React from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import toast from "react-hot-toast";
 import useAuth from "../hooks/useAuth";
+import useRole from "../hooks/useRole";
 
 const Navbar = () => {
   const { user, logOut } = useAuth();
+  const [currentUserRole] = useRole();
   const navigate = useNavigate();
-  console.log(user);
+  const isAdmin = currentUserRole === "ADMIN";
 
   const handleLogout = () => {
     logOut()
@@ -51,11 +53,25 @@ const Navbar = () => {
                 <li>
                   <NavLink to="/">Home</NavLink>
                 </li>
-                <li>
-                  <NavLink to="/about-us">About US</NavLink>
+                {isAdmin && (
+                  <>
+                    <li>
+                      <NavLink to="/admin">Admin Panel</NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/all-users">All Users</NavLink>
+                    </li>
+                  </>
+                )}
+                <li className="py-2 px-3 font-semibold text-gray-600">Routines</li>
+                <li className="pl-4">
+                  <NavLink to="/routines">Section Routine</NavLink>
                 </li>
-                <li>
-                  <NavLink to="/routines">Routine</NavLink>
+                <li className="pl-4">
+                  <NavLink to="/teacher-routine">Teacher Routine</NavLink>
+                </li>
+                <li className="pl-4">
+                  <NavLink to="/room-routine">Room Routine</NavLink>
                 </li>
                 <li>
                   <NavLink to="/rooms">Rooms</NavLink>
@@ -77,11 +93,40 @@ const Navbar = () => {
               <li>
                 <NavLink to="/">Home</NavLink>
               </li>
-              <li>
-                <NavLink to="/about-us">About Us</NavLink>
-              </li>
-              <li>
-                <NavLink to="/routines">Routine</NavLink>
+              {isAdmin && (
+                <>
+                  <li>
+                    <NavLink to="/admin">Admin Panel</NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/all-users">All Users</NavLink>
+                  </li>
+                </>
+              )}
+              <li className="relative group">
+                <span className="cursor-pointer hover:text-teal-600 flex items-center gap-1">
+                  Routines
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </span>
+                <ul className="absolute left-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <li>
+                    <NavLink to="/routines" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 rounded-t-lg">
+                      Section Routine
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/teacher-routine" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600">
+                      Teacher Routine
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/room-routine" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 rounded-b-lg">
+                      Room Routine
+                    </NavLink>
+                  </li>
+                </ul>
               </li>
               <li>
                 <NavLink to="/rooms">Rooms</NavLink>

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { to12Hour } from "../utils/timeFormat";
 import useAuth from "../hooks/useAuth";
+import { to12Hour } from "../utils/timeFormat";
 
 const UpdateRoomStatus = () => {
   const location = useLocation();
@@ -16,10 +16,11 @@ const UpdateRoomStatus = () => {
   const [formData, setFormData] = useState({
     status: roomStatus?.status || "",
     room_id: room?.id || "",
-    day: routine?.day || "",
-    routine_id: routine?.id || "",
-    start_time: routine?.start_time || "",
-    end_time: routine?.end_time || "",
+    day: routine?.day || roomStatus?.day_of_week || "",
+    routine_id: routine?.id || roomStatus?.routine_id || "",
+    start_time: routine?.start_time || roomStatus?.start_time || "",
+    end_time: routine?.end_time || roomStatus?.end_time || "",
+    is_recurring: roomStatus?.is_recurring || false,
   });
 
   const [rooms, setRooms] = useState([]);
@@ -87,7 +88,6 @@ const UpdateRoomStatus = () => {
         axios.get(`${API_BASE}/rooms`),
         axios.get(`${API_BASE}/routines`),
       ]);
-
       setRooms(roomsRes.data?.data?.rooms || []);
       setRoutines(routinesRes.data?.data?.routines || []);
     } catch (error) {
@@ -99,34 +99,6 @@ const UpdateRoomStatus = () => {
   useEffect(() => {
     loadData();
   }, [roomStatus, navigate, API_BASE]);
-
-  const getTodayTimeSlots = () => {
-    if (!formData.room_id || !formData.day) return [];
-
-    return routines
-      .filter(
-        (r) =>
-          (r.room?.id === formData.room_id || r.room_id === formData.room_id) &&
-          r.day?.trim().toUpperCase() === formData.day
-      )
-      .map((r) => ({
-        day: r.day?.trim().toUpperCase(),
-        start_time: r.start_time,
-        end_time: r.end_time,
-      }));
-  };
-
-  const getRoutineForTimeSlot = (roomId, day, startTime, endTime) => {
-    const start24h = convertTo24Hour(startTime);
-    const end24h = convertTo24Hour(endTime);
-    return routines.find(
-      (r) =>
-        (r.room?.id === roomId || r.room_id === roomId) &&
-        r.day?.trim().toUpperCase() === day &&
-        r.start_time === start24h &&
-        r.end_time === end24h
-    );
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -152,30 +124,9 @@ const UpdateRoomStatus = () => {
       setFormData((prev) => ({
         ...prev,
         day: value.toUpperCase(),
-        routine_id: "",
         start_time: "",
         end_time: "",
       }));
-      return;
-    }
-
-    if (name === "routine_id") {
-      const [startTime, endTime] = value.split("|");
-      const matchingRoutine = getRoutineForTimeSlot(
-        formData.room_id,
-        formData.day,
-        startTime,
-        endTime
-      );
-
-      if (matchingRoutine) {
-        setFormData((prev) => ({
-          ...prev,
-          routine_id: matchingRoutine.id,
-          start_time: startTime,
-          end_time: endTime,
-        }));
-      }
       return;
     }
 
@@ -190,12 +141,17 @@ const UpdateRoomStatus = () => {
       return;
     }
 
-    if (formData.status !== "FREE") {
-      if (!formData.room_id || !formData.day || !formData.routine_id) {
-        toast.error("Please fill all required fields");
-        return;
-      }
+    // Validation: All statuses need room, day, and time
+    if (!formData.room_id || !formData.day) {
+      toast.error("Please select room and day");
+      return;
     }
+
+    if (!formData.start_time || !formData.end_time) {
+      toast.error("Please select a time slot");
+      return;
+    }
+
 
     try {
       const payload = {
@@ -203,19 +159,33 @@ const UpdateRoomStatus = () => {
         status_date: new Date().toISOString().split("T")[0],
         room_id: formData.room_id,
         updated_by: user.uid,
+        day_of_week: formData.day,
       };
 
-      if (formData.routine_id && formData.routine_id.trim() !== "") {
-        payload.routine_id = formData.routine_id;
+      // All statuses now use start_time/end_time directly
+      if (formData.start_time && formData.end_time) {
+        payload.start_time = convertTo24Hour(formData.start_time);
+        payload.end_time = convertTo24Hour(formData.end_time);
       }
+      
+      // For OCCUPIED/RESCHEDULED, include routine_id if selected (class info comes from routine)
+      if (formData.status === "OCCUPIED" || formData.status === "RESCHEDULED") {
+        if (formData.routine_id) {
+          payload.routine_id = formData.routine_id;
+        }
+      }
+      
+    
+      payload.is_recurring = formData.is_recurring || false;
+
+      console.log("Payload being sent:", JSON.stringify(payload, null, 2));
 
       if (roomStatus?.id) {
-        if (roomStatus.recurring && !modifyRecurring) {
-          await axios.post(`${API_BASE}/roomStatuses`, {
-            ...payload,
-            day_of_week: formData.day,
-            is_recurring: false,
-          });
+        if (roomStatus.is_recurring && !modifyRecurring) {
+          // Create a one-off override for today only
+          const createPayload = { ...payload, is_recurring: false };
+          console.log("Creating one-off override:", JSON.stringify(createPayload, null, 2));
+          await axios.post(`${API_BASE}/roomStatuses`, createPayload);
           toast.success("One-off room status created for today");
         } else {
           await axios.patch(
@@ -225,16 +195,12 @@ const UpdateRoomStatus = () => {
           toast.success("Room status updated successfully!");
         }
       } else {
-        if (formData.status !== "FREE") {
-          await axios.post(`${API_BASE}/roomStatuses`, {
-            ...payload,
-            day_of_week: formData.day,
-            is_recurring: false,
-          });
-          toast.success("Room status created successfully!");
-        } else {
-          toast.info("No need to create record for FREE status");
-        }
+        // Create new status (for all status types including FREE)
+        await axios.post(`${API_BASE}/roomStatuses`, {
+          ...payload,
+          is_recurring: false,
+        });
+        toast.success("Room status created successfully!");
       }
 
       navigate("/rooms");
@@ -246,8 +212,8 @@ const UpdateRoomStatus = () => {
     }
   };
 
-  const isChangingToFree = formData.status === "FREE";
-  const needsFullDetails = !isChangingToFree || !roomStatus?.id;
+  // All statuses work the same way now - just time slots, not tied to specific classes
+  const needsFullDetails = true; // Always need room, day, time
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -276,25 +242,53 @@ const UpdateRoomStatus = () => {
             </select>
           </div>
 
-          {roomStatus?.recurring && roomStatus?.id && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          {/* Show different checkbox based on whether original status is recurring */}
+          {roomStatus?.is_recurring && roomStatus?.id ? (
+            // Editing an existing RECURRING status - ask if they want to modify the rule or create one-off
+            <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <input
                 type="checkbox"
                 id="modifyRecurring"
                 checked={modifyRecurring}
                 onChange={(e) => setModifyRecurring(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-4 h-4 text-yellow-600 rounded focus:ring-2 focus:ring-yellow-500"
               />
               <div>
                 <label
                   htmlFor="modifyRecurring"
                   className="text-sm font-medium text-gray-800 cursor-pointer"
                 >
-                  Modify recurring entry (affects all future matching days)
+                  Modify the recurring rule (affects all future {formData.day || "matching days"})
                 </label>
                 <div className="text-xs text-gray-500">
-                  Leave unchecked to apply this change only for the specific
-                  date.
+                  {modifyRecurring 
+                    ? "✅ Will update the recurring entry - applies every week."
+                    : "⚠️ Will create a one-off override for today only. The recurring rule stays unchanged."
+                  }
+                </div>
+              </div>
+            </div>
+          ) : (
+            // New status OR editing a non-recurring status - ask if it should repeat
+            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <input
+                type="checkbox"
+                id="is_recurring"
+                checked={formData.is_recurring}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, is_recurring: e.target.checked }))
+                }
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <div>
+                <label
+                  htmlFor="is_recurring"
+                  className="text-sm font-medium text-gray-800 cursor-pointer"
+                >
+                  Repeat Weekly (same day every week)
+                </label>
+                <div className="text-xs text-gray-500">
+                  Check to apply this status every {formData.day || "selected day"}.
                 </div>
               </div>
             </div>
@@ -302,10 +296,19 @@ const UpdateRoomStatus = () => {
 
           {needsFullDetails && (
             <>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-yellow-800 text-sm">
-                  ⚠ Please provide complete details for this status change
-                </p>
+              <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                <div className="text-blue-800 text-sm space-y-2">
+                  <p className="font-semibold">🏠 Room Status</p>
+                  <p>
+                    {formData.status === "OCCUPIED" && "Mark this room as occupied during a specific time slot."}
+                    {formData.status === "RESCHEDULED" && "Mark this room's class as rescheduled during a specific time slot."}
+                    {formData.status === "FREE" && "Mark this room as available during a specific time slot."}
+                    {formData.status === "MAINTENANCE" && "Mark this room as under maintenance during a specific time slot."}
+                  </p>
+                  <p className="text-xs text-blue-600 italic">
+                    This status applies to the room for the selected time slot.
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -355,69 +358,168 @@ const UpdateRoomStatus = () => {
               {formData.day && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Time Slot *
+                    Select Time Slot *
                   </label>
-                  {getTodayTimeSlots().length === 0 ? (
-                    <div className="w-full px-4 py-2 border border-red-300 rounded-lg bg-red-50 text-red-700 text-sm">
-                      No classes scheduled for this room on {formData.day}
-                    </div>
-                  ) : (
-                    <select
-                      name="routine_id"
-                      value={
-                        formData.start_time && formData.end_time
-                          ? `${formData.start_time}|${formData.end_time}`
-                          : ""
-                      }
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select Time Slot</option>
-                      {getTodayTimeSlots().map((slot, index) => (
+                  <select
+                    name="time_slot"
+                    value={
+                      formData.start_time && formData.end_time
+                        ? `${formData.start_time}|${formData.end_time}`
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const [startTime, endTime] = e.target.value.split("|");
+                      setFormData((prev) => ({
+                        ...prev,
+                        start_time: startTime,
+                        end_time: endTime,
+                        routine_id: "",
+                      }));
+                    }}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select Time Slot</option>
+                    {timeSlots
+                      .filter((slot) => slot.day === formData.day)
+                      .map((slot, index) => (
                         <option
                           key={index}
                           value={`${slot.start_time}|${slot.end_time}`}
                         >
-                          {to12Hour(slot.start_time)} -{" "}
-                          {to12Hour(slot.end_time)}
+                          {slot.start_time} - {slot.end_time}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Routine/Class picker for OCCUPIED/RESCHEDULED - shows ALL routines */}
+              {(formData.status === "OCCUPIED" || formData.status === "RESCHEDULED") && formData.start_time && formData.end_time && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800 text-sm mb-3">
+                    <strong>📚 Select the class being {formData.status === "OCCUPIED" ? "held" : "rescheduled"} in this room:</strong>
+                  </p>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pick from Scheduled Classes
+                      {formData.status === "OCCUPIED" && (
+                        <span className="text-blue-600 ml-1">(Today's classes only)</span>
+                      )}
+                    </label>
+                    <select
+                      name="routine_id"
+                      value={formData.routine_id}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          routine_id: e.target.value,
+                        }));
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">-- Select a class --</option>
+                      {routines
+                        .filter((r) => {
+                          // For OCCUPIED: show only today's classes
+                          if (formData.status === "OCCUPIED") {
+                            const today = new Date().toLocaleString("en-US", { weekday: "long" }).toUpperCase();
+                            return r.day?.toUpperCase() === today;
+                          }
+                          // For RESCHEDULED: show all routines
+                          return true;
+                        })
+                        .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.course?.course_code} - {r.section?.section_name} - {r.teacher} ({r.day} {to12Hour(r.start_time)}-{to12Hour(r.end_time)})
                         </option>
                       ))}
                     </select>
+                    <p className="text-xs text-blue-600 mt-2 italic">
+                      {formData.status === "RESCHEDULED" 
+                        ? "Select the original class. The routine's time is the ORIGINAL time, the selected time slot above is the NEW time."
+                        : "Class info (course, section, teacher) will be pulled from the selected routine."
+                      }
+                    </p>
+                  </div>
+
+                  {/* Show original vs new time for RESCHEDULED */}
+                  {formData.status === "RESCHEDULED" && formData.routine_id && (
+                    <div className="mt-4 bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                      {(() => {
+                        const selectedRoutine = routines.find(r => r.id === formData.routine_id);
+                        return selectedRoutine ? (
+                          <div className="text-sm space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-600 font-semibold">❌ Original:</span>
+                              <span>{selectedRoutine.day} {to12Hour(selectedRoutine.start_time)} - {to12Hour(selectedRoutine.end_time)}</span>
+                              <span className="text-gray-500">({selectedRoutine.room?.room_number || "N/A"})</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-green-600 font-semibold">✅ New:</span>
+                              <span>{formData.day} {to12Hour(formData.start_time)} - {to12Hour(formData.end_time)}</span>
+                              <span className="text-gray-500">({rooms.find(r => r.id === formData.room_id)?.room_number || "N/A"})</span>
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
                   )}
                 </div>
               )}
 
-              {formData.routine_id && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">
-                    Selected Class Details:
+              {formData.start_time && formData.end_time && (
+                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                  <h3 className="font-semibold text-yellow-800 mb-2">
+                    ⚠️ You are about to set:
                   </h3>
-                  {(() => {
-                    const selectedRoutine = routines.find(
-                      (r) => r.id === formData.routine_id
-                    );
-                    return selectedRoutine ? (
-                      <div className="space-y-1 text-sm text-blue-800">
-                        <p>
-                          <strong>Course:</strong>{" "}
-                          {selectedRoutine.course?.course_name}
-                        </p>
-                        <p>
-                          <strong>Section:</strong>{" "}
-                          {selectedRoutine.section?.section_name}
-                        </p>
-                        <p>
-                          <strong>Teacher:</strong> {selectedRoutine.teacher}
-                        </p>
-                        <p>
-                          <strong>Time:</strong>{" "}
-                          {to12Hour(selectedRoutine.start_time)} -{" "}
-                          {to12Hour(selectedRoutine.end_time)}
-                        </p>
-                      </div>
-                    ) : null;
-                  })()}
+                  <div className="space-y-1 text-sm text-yellow-800">
+                    <p>
+                      <strong>Status:</strong> {formData.status}
+                    </p>
+                    <p>
+                      <strong>Room:</strong>{" "}
+                      {rooms.find(r => r.id === formData.room_id)?.room_number || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Day:</strong> {formData.day}
+                    </p>
+                    <p>
+                      <strong>Time:</strong> {to12Hour(formData.start_time)} - {to12Hour(formData.end_time)}
+                    </p>
+                    {(formData.status === "OCCUPIED" || formData.status === "RESCHEDULED") && formData.routine_id && (
+                      (() => {
+                        const selectedRoutine = routines.find(r => r.id === formData.routine_id);
+                        return selectedRoutine ? (
+                          <>
+                            <p>
+                              <strong>Course:</strong> {selectedRoutine.course?.course_name || "N/A"}
+                            </p>
+                            <p>
+                              <strong>Section:</strong> {selectedRoutine.section?.section_name || "N/A"}
+                            </p>
+                            <p>
+                              <strong>Teacher:</strong> {selectedRoutine.teacher || "N/A"}
+                            </p>
+                            {formData.status === "RESCHEDULED" && (
+                              <div className="mt-2 pt-2 border-t border-yellow-300">
+                                <p className="text-red-700">
+                                  <strong>Original Time:</strong> {selectedRoutine.day} {to12Hour(selectedRoutine.start_time)} - {to12Hour(selectedRoutine.end_time)} ({selectedRoutine.room?.room_number || "N/A"})
+                                </p>
+                                <p className="text-green-700">
+                                  <strong>Rescheduled To:</strong> {formData.day} {to12Hour(formData.start_time)} - {to12Hour(formData.end_time)} ({rooms.find(r => r.id === formData.room_id)?.room_number || "N/A"})
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        ) : null;
+                      })()
+                    )}
+                  </div>
+                  <p className="text-xs text-yellow-600 mt-2 italic">
+                    Click "Update Status" to save this new status.
+                  </p>
                 </div>
               )}
             </>

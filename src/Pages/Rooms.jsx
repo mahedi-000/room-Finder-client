@@ -2,12 +2,10 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import RoomCard from "../Components/RoomCard";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router";
 import { formatTime12h } from "../utils/timeFormat";
 
 const Rooms = () => {
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
-  const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
   const [routines, setRoutines] = useState([]);
   const [roomStatuses, setRoomStatuses] = useState([]);
@@ -95,13 +93,14 @@ const Rooms = () => {
     }
 
     const businessStart = "10:40";
-    const businessEnd = "16:40";
+    const businessEnd = "16:20";
     const isBusinessHours =
       currentTime >= businessStart && currentTime < businessEnd;
 
     const filtered = rooms.filter((room) => {
       if (isBusinessHours) {
-        const dbStatus = roomStatuses.find((s) => {
+        // Get ALL matching statuses for this room today
+        const matchingStatuses = roomStatuses.filter((s) => {
           const statusDateOnly = s.status_date?.split("T")[0];
           return (
             (s.room?.id === room.id || s.room_id === room.id) &&
@@ -109,9 +108,43 @@ const Rooms = () => {
           );
         });
 
-        if (dbStatus) {
-          return dbStatus.status === "FREE";
+        // Check if there's an OCCUPIED status with an active routine RIGHT NOW
+        const activeOccupiedStatus = matchingStatuses.find((s) => {
+          if (s.status === "OCCUPIED" && s.routine) {
+            return (
+              currentTime >= s.routine.start_time &&
+              currentTime < s.routine.end_time
+            );
+          }
+          return false;
+        });
+
+        // If there's an active occupied routine, room is NOT available
+        if (activeOccupiedStatus) {
+          return false;
         }
+
+        // Check if there's an active FREE status for this specific time
+        const activeFreeStatus = matchingStatuses.find((s) => {
+          if (s.status === "FREE") {
+            // If FREE has time range, check if current time is within range
+            if (s.start_time && s.end_time) {
+              // Handle cross-midnight time range (e.g., 21:31 to 10:20)
+              if (s.end_time < s.start_time) {
+                return currentTime >= s.start_time || currentTime < s.end_time;
+              }
+              return currentTime >= s.start_time && currentTime < s.end_time;
+            }
+          }
+          return false;
+        });
+
+        // If there's an active FREE status, room IS available
+        if (activeFreeStatus) {
+          return true;
+        }
+
+        // No active roomStatus found - room status unknown (not available)
         return false;
       }
 
@@ -157,7 +190,7 @@ const Rooms = () => {
   const isBreakTime = currentTime >= breakStart && currentTime < breakEnd;
 
   const businessStart = "10:40";
-  const businessEnd = "16:40";
+  const businessEnd = "16:20";
   const isBusinessHours =
     currentTime >= businessStart && currentTime < businessEnd;
 

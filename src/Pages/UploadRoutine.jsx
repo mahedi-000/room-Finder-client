@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import axios from "axios";
 import toast from "react-hot-toast";
 
 const UploadRoutine = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [sections, setSections] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -95,6 +97,15 @@ const UploadRoutine = () => {
 
   return (
     <div className="p-16 rounded-2xl shadow-lg max-w-4xl mx-auto my-12 border border-gray-200">
+      <button
+        onClick={() => navigate("/admin")}
+        className="mb-6 flex items-center gap-2 text-teal-600 hover:text-teal-800 font-medium transition-colors"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to Admin Panel
+      </button>
       <form
         onSubmit={handleSubmit}
         className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto p-6"
