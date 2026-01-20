@@ -70,11 +70,9 @@ const Rooms = () => {
     return now.toISOString().split("T")[0];
   };
 
-  const getRoomStatusToday = (roomId) => {
-    const todayDate = getTodayDate();
-    return roomStatuses.find(
-      (s) => s.room_id === roomId && s.status_date === todayDate
-    );
+  const getTodayDayOfWeek = () => {
+    const now = new Date();
+    return now.toLocaleString("en-US", { weekday: "long" }).toUpperCase();
   };
 
   const getAvailableRooms = () => {
@@ -83,6 +81,7 @@ const Rooms = () => {
       now.getMinutes()
     ).padStart(2, "0")}`;
     const todayDate = getTodayDate();
+    const todayDay = getTodayDayOfWeek();
 
     const breakStart = "13:10";
     const breakEnd = "13:50";
@@ -93,22 +92,25 @@ const Rooms = () => {
     }
 
     const businessStart = "10:40";
-    const businessEnd = "16:20";
+    const businessEnd = "18:20";
     const isBusinessHours =
       currentTime >= businessStart && currentTime < businessEnd;
 
     const filtered = rooms.filter((room) => {
       if (isBusinessHours) {
-        // Get ALL matching statuses for this room today
+    
         const matchingStatuses = roomStatuses.filter((s) => {
-          const statusDateOnly = s.status_date?.split("T")[0];
-          return (
-            (s.room?.id === room.id || s.room_id === room.id) &&
-            statusDateOnly === todayDate
-          );
+          const roomMatch = s.room?.id === room.id || s.room_id === room.id;
+          
+          if (s.is_recurring) {
+            return roomMatch && s.day_of_week === todayDay;
+          } else {
+            const statusDateOnly = s.status_date?.split("T")[0];
+            return roomMatch && statusDateOnly === todayDate;
+          }
         });
 
-        // Check if there's an OCCUPIED status with an active routine RIGHT NOW
+       
         const activeOccupiedStatus = matchingStatuses.find((s) => {
           if (s.status === "OCCUPIED" && s.routine) {
             return (
@@ -119,17 +121,17 @@ const Rooms = () => {
           return false;
         });
 
-        // If there's an active occupied routine, room is NOT available
+        
         if (activeOccupiedStatus) {
           return false;
         }
 
-        // Check if there's an active FREE status for this specific time
+        
         const activeFreeStatus = matchingStatuses.find((s) => {
           if (s.status === "FREE") {
-            // If FREE has time range, check if current time is within range
+           
             if (s.start_time && s.end_time) {
-              // Handle cross-midnight time range (e.g., 21:31 to 10:20)
+              
               if (s.end_time < s.start_time) {
                 return currentTime >= s.start_time || currentTime < s.end_time;
               }
@@ -139,12 +141,12 @@ const Rooms = () => {
           return false;
         });
 
-        // If there's an active FREE status, room IS available
+       
         if (activeFreeStatus) {
           return true;
         }
 
-        // No active roomStatus found - room status unknown (not available)
+        
         return false;
       }
 
@@ -190,7 +192,7 @@ const Rooms = () => {
   const isBreakTime = currentTime >= breakStart && currentTime < breakEnd;
 
   const businessStart = "10:40";
-  const businessEnd = "16:20";
+  const businessEnd = "18:20";
   const isBusinessHours =
     currentTime >= businessStart && currentTime < businessEnd;
 
@@ -198,12 +200,16 @@ const Rooms = () => {
     ? rooms 
     : isBusinessHours
     ? rooms.filter((room) => {
+        const todayDay = getTodayDayOfWeek();
         const dbStatus = roomStatuses.find((s) => {
-          const statusDateOnly = s.status_date?.split("T")[0];
-          return (
-            (s.room?.id === room.id || s.room_id === room.id) &&
-            statusDateOnly === todayDate
-          );
+          const roomMatch = s.room?.id === room.id || s.room_id === room.id;
+          
+          if (s.is_recurring) {
+            return roomMatch && s.day_of_week === todayDay;
+          } else {
+            const statusDateOnly = s.status_date?.split("T")[0];
+            return roomMatch && statusDateOnly === todayDate;
+          }
         });
         return !!dbStatus; 
       })
@@ -219,7 +225,7 @@ const Rooms = () => {
             Available Rooms ({availableRooms.length}):
             {isBreakTime && (
               <span className="ml-2 text-sm bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full">
-                Break Time (1:10 PM - 1:50 PM)
+                Break Time (1:11 PM - 1:50 PM)
               </span>
             )}
           </h2>

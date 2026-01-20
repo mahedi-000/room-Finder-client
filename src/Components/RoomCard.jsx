@@ -31,7 +31,7 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
     console.log("Today day:", today);
 
     const businessStart = "10:40";
-    const businessEnd = "16:20";
+    const businessEnd = "18:20";
     const isBusinessHours =
       currentTime >= businessStart && currentTime < businessEnd;
 
@@ -341,7 +341,10 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
   })();
 
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-100 p-6 space-y-4">
+    <div 
+      onClick={() => navigate("/room-details", { state: { room } })}
+      className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-100 p-6 space-y-4"
+    >
       <div className="flex items-start justify-between">
         <h2 className="text-2xl font-bold text-gray-800">
           Room: {room.room_number}
@@ -359,22 +362,24 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
       {canUpdateStatus && (
         <div className="flex gap-2">
           <button
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
               navigate("/update-room-status", {
                 state: {
                   roomStatus: currentClass,
                   room: room,
                   routine: currentClass?.routine,
                 },
-              })
-            }
+              });
+            }}
             className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
           >
             Update Status
           </button>
           {currentClass && currentClass.isManualStatus && (
             <button
-              onClick={async () => {
+              onClick={async (e) => {
+                e.stopPropagation();
                 if (
                   window.confirm(
                     "Are you sure you want to delete this room status?"

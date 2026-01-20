@@ -22,8 +22,8 @@ const Navbar = () => {
   };
   return (
     <div>
-      <div className="bg-white  border-b-2 border-gray-300">
-        <div className="navbar   px-4">
+      <div className="fixed top-0 left-0 right-0 bg-white border-b-2 border-gray-300 z-50">
+        <div className="navbar px-4">
           <div className=" navbar-start">
             <div className="dropdown">
               <div

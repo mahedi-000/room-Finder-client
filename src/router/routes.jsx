@@ -15,6 +15,7 @@ import UploadRoom from "../Pages/UploadRoom";
 import RoomRoutine from "../Pages/RoomRoutine";
 import UploadRoomStatus from "../Pages/UploadRoomStatus";
 import UpdateRoomStatus from "../Pages/UpdateRoomStatus";
+import RoomDetails from "../Pages/RoomDetails";
 import PrivateRoute from "./PrivateRoute";
 import TeacherRoute from "./TeacherRoute";
 import AdminRoute from "./adminRoute";
@@ -77,6 +78,10 @@ export const router = createBrowserRouter([
       {
         path: "rooms",
         element: <Rooms />,
+      },
+      {
+        path: "room-details",
+        element: <RoomDetails />,
       },
 
       {

@@ -61,7 +61,7 @@ const UploadRoomStatus = () => {
     { day: "THURSDAY", start_time: "12:21", end_time: "1:10" },
     { day: "THURSDAY", start_time: "1:51", end_time: "2:40" },
     { day: "THURSDAY", start_time: "2:41", end_time: "3:30" },
-    { day: "THURSDAY", start_time: "3:31", end_time: "4:40" },
+    { day: "THURSDAY", start_time: "3:31", end_time: "4:20" },
     { day: "FRIDAY", start_time: "07:00", end_time: "07:50" },
     { day: "FRIDAY", start_time: "07:51", end_time: "08:40" },
     { day: "FRIDAY", start_time: "08:41", end_time: "09:30" },
