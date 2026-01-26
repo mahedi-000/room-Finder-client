@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import useRole from "../hooks/useRole";
 
-const RoomCard = ({ room, routines, roomStatuses }) => {
+const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL;
   const [currentClass, setCurrentClass] = useState(null);
@@ -19,7 +19,7 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
 
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
+      now.getMinutes(),
     ).padStart(2, "0")}`;
     const todayDate = now.toISOString().split("T")[0];
     const today = now
@@ -31,62 +31,74 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
     console.log("Today day:", today);
 
     const businessStart = "10:40";
-    const businessEnd = "18:20";
+    const businessEnd = "16:20";
     const isBusinessHours =
       currentTime >= businessStart && currentTime < businessEnd;
 
     console.log("Is business hours:", isBusinessHours);
 
     if (isBusinessHours) {
-      
-      const matchingStatuses = roomStatuses?.filter((s) => {
-        const statusDateOnly = s.status_date?.split("T")[0];
-        const roomMatch = s.room?.id === room.id || s.room_id === room.id;
+      // If parent passed an authoritative latestStatus, prefer it (keeps UI consistent)
+      let matchingStatuses = [];
+      if (latestStatus) {
+        matchingStatuses = [latestStatus];
+        console.log("Using provided latestStatus for RoomCard:", latestStatus);
+      } else {
+        matchingStatuses =
+          roomStatuses?.filter((s) => {
+            const statusDateOnly = s.status_date?.split("T")[0];
+            const roomMatch = s.room?.id === room.id || s.room_id === room.id;
 
-        const exactDateMatch = roomMatch && statusDateOnly === todayDate;
+            const exactDateMatch = roomMatch && statusDateOnly === todayDate;
 
-        const recurringMatch =
-          s.is_recurring && roomMatch && s.day_of_week === today;
+            const recurringMatch =
+              s.is_recurring && roomMatch && s.day_of_week === today;
 
-       
-        if (roomMatch) {
-          console.log(`Status for this room:`, {
-            status: s.status,
-            start_time: s.start_time,
-            end_time: s.end_time,
-            status_date: s.status_date,
-            statusDateOnly,
-            todayDate,
-            is_recurring: s.is_recurring,
-            day_of_week: s.day_of_week,
-            today,
-            exactDateMatch,
-            recurringMatch,
-            hasRoutine: !!s.routine
-          });
-        }
+            if (roomMatch) {
+              console.log(`Status for this room:`, {
+                status: s.status,
+                start_time: s.start_time,
+                end_time: s.end_time,
+                status_date: s.status_date,
+                todayDate,
+                is_recurring: s.is_recurring,
+                day_of_week: s.day_of_week,
+                today,
+                exactDateMatch,
+                recurringMatch,
+                hasRoutine: !!s.routine,
+              });
+            }
 
-        return exactDateMatch || recurringMatch;
-      }) || [];
+            return exactDateMatch || recurringMatch;
+          }) || [];
+      }
 
       console.log("All matching statuses:", matchingStatuses);
 
-      
       let foundActiveStatus = null;
       for (const s of matchingStatuses) {
-        console.log(`Processing status:`, s.status, `start:`, s.start_time, `end:`, s.end_time);
-        
-        
+        console.log(
+          `Processing status:`,
+          s.status,
+          `start:`,
+          s.start_time,
+          `end:`,
+          s.end_time,
+        );
+
         if (s.start_time && s.end_time) {
           let timeActive;
-         
+
           if (s.end_time < s.start_time) {
-            timeActive = currentTime >= s.start_time || currentTime < s.end_time;
+            timeActive =
+              currentTime >= s.start_time || currentTime < s.end_time;
           } else {
-            timeActive = currentTime >= s.start_time && currentTime < s.end_time;
+            timeActive =
+              currentTime >= s.start_time && currentTime < s.end_time;
           }
           console.log(
-            `Checking ${s.status} time slot: ${s.start_time} to ${s.end_time}, current: ${currentTime}, active: ${timeActive}`
+            `Checking ${s.status} time slot: ${s.start_time} to ${s.end_time}, current: ${currentTime}, active: ${timeActive}`,
           );
           if (timeActive) {
             foundActiveStatus = s;
@@ -94,19 +106,28 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
           }
           continue;
         }
-       
+
         console.log(`Status ${s.status} has no valid time range, skipping`);
       }
 
-      
-      const dbStatus = foundActiveStatus;
+      let dbStatus = foundActiveStatus;
+
+      // If no active status in the current time window, fall back to the most
+      // recent matching status so the card reflects the authoritative record.
+      if (!dbStatus && matchingStatuses.length > 0) {
+        matchingStatuses.sort((a, b) => {
+          const aTime = new Date(a.updated_at || a.status_date || 0).getTime();
+          const bTime = new Date(b.updated_at || b.status_date || 0).getTime();
+          return bTime - aTime;
+        });
+        dbStatus = matchingStatuses[0];
+      }
 
       console.log("Selected DB Status:", dbStatus);
 
       if (dbStatus) {
         setCurrentClass(dbStatus);
       } else {
-        
         setCurrentClass({ status: "NO_RECORD", isNoRecord: true });
       }
       return;
@@ -114,33 +135,33 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
 
     console.log("Outside business hours - setting currentClass to null");
     setCurrentClass(null);
-  }, [room.id, routines, roomStatuses]);
+  }, [room.id, routines, roomStatuses, latestStatus]);
 
   const badgeClass =
     currentClass?.status === "NO_RECORD"
       ? "bg-gray-100 text-gray-700"
       : !currentClass || currentClass.status === "FREE"
-      ? "bg-green-100 text-green-700"
-      : currentClass.status === "OCCUPIED"
-      ? "bg-orange-100 text-orange-700"
-      : currentClass.status === "MAINTENANCE"
-      ? "bg-red-100 text-red-700"
-      : currentClass.status === "RESCHEDULED"
-      ? "bg-blue-100 text-blue-700"
-      : "bg-gray-100 text-gray-700";
+        ? "bg-green-100 text-green-700"
+        : currentClass.status === "OCCUPIED"
+          ? "bg-orange-100 text-orange-700"
+          : currentClass.status === "MAINTENANCE"
+            ? "bg-red-100 text-red-700"
+            : currentClass.status === "RESCHEDULED"
+              ? "bg-blue-100 text-blue-700"
+              : "bg-gray-100 text-gray-700";
 
   const badgeText =
     currentClass?.status === "NO_RECORD"
       ? "No DB status"
       : !currentClass || currentClass.status === "FREE"
-      ? "Available"
-      : currentClass.status === "OCCUPIED"
-      ? "Occupied"
-      : currentClass.status === "MAINTENANCE"
-      ? "Maintenance"
-      : currentClass.status === "RESCHEDULED"
-      ? "Rescheduled"
-      : currentClass.status;
+        ? "Available"
+        : currentClass.status === "OCCUPIED"
+          ? "Occupied"
+          : currentClass.status === "MAINTENANCE"
+            ? "Maintenance"
+            : currentClass.status === "RESCHEDULED"
+              ? "Rescheduled"
+              : currentClass.status;
 
   const detailsBlock = (() => {
     if (!currentClass || currentClass.status === "FREE") {
@@ -173,10 +194,10 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
           {currentClass.status === "OCCUPIED"
             ? "Currently Occupied"
             : currentClass.status === "RESCHEDULED"
-            ? "Class Rescheduled"
-            : currentClass.status === "MAINTENANCE"
-            ? "Under Maintenance"
-            : currentClass.status}
+              ? "Class Rescheduled"
+              : currentClass.status === "MAINTENANCE"
+                ? "Under Maintenance"
+                : currentClass.status}
         </div>
         {currentClass.routine ? (
           <>
@@ -198,9 +219,11 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
                 {currentClass.routine.section?.section_name}
               </span>
             </div>
-            
+
             {/* For RESCHEDULED: Show both original and new time */}
-            {currentClass.status === "RESCHEDULED" && currentClass.start_time && currentClass.end_time ? (
+            {currentClass.status === "RESCHEDULED" &&
+            currentClass.start_time &&
+            currentClass.end_time ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-gray-500">
                   <svg
@@ -217,7 +240,8 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
                     />
                   </svg>
                   <span className="font-medium line-through">
-                    Original: {formatTime12h(currentClass.routine.start_time)} - {formatTime12h(currentClass.routine.end_time)}
+                    Original: {formatTime12h(currentClass.routine.start_time)} -{" "}
+                    {formatTime12h(currentClass.routine.end_time)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-600">
@@ -235,7 +259,8 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
                     />
                   </svg>
                   <span className="font-semibold">
-                    New: {formatTime12h(currentClass.start_time)} - {formatTime12h(currentClass.end_time)}
+                    New: {formatTime12h(currentClass.start_time)} -{" "}
+                    {formatTime12h(currentClass.end_time)}
                   </span>
                 </div>
               </div>
@@ -255,14 +280,20 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
                   />
                 </svg>
                 <span className="font-medium">
-                  {formatTime12h(currentClass.start_time || currentClass.routine.start_time)} -{" "}
-                  {formatTime12h(currentClass.end_time || currentClass.routine.end_time)}
+                  {formatTime12h(
+                    currentClass.start_time || currentClass.routine.start_time,
+                  )}{" "}
+                  -{" "}
+                  {formatTime12h(
+                    currentClass.end_time || currentClass.routine.end_time,
+                  )}
                 </span>
               </div>
             )}
           </>
-        ) : currentClass.teacher || currentClass.course || currentClass.section ? (
-       
+        ) : currentClass.teacher ||
+          currentClass.course ||
+          currentClass.section ? (
           <>
             {currentClass.teacher && (
               <div className="flex justify-between">
@@ -341,7 +372,7 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
   })();
 
   return (
-    <div 
+    <div
       onClick={() => navigate("/room-details", { state: { room } })}
       className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow cursor-pointer border border-gray-100 p-6 space-y-4"
     >
@@ -382,12 +413,12 @@ const RoomCard = ({ room, routines, roomStatuses }) => {
                 e.stopPropagation();
                 if (
                   window.confirm(
-                    "Are you sure you want to delete this room status?"
+                    "Are you sure you want to delete this room status?",
                   )
                 ) {
                   try {
                     await axios.delete(
-                      `${API_BASE}/roomStatuses/${currentClass.id}`
+                      `${API_BASE}/roomStatuses/${currentClass.id}`,
                     );
                     toast.success("Room status deleted successfully!");
                     window.location.reload();

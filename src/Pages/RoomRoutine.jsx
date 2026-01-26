@@ -100,7 +100,7 @@ const RoomRoutine = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-360 mx-auto">
         <div className="text-center mb-8">
           <div className="inline-block">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">

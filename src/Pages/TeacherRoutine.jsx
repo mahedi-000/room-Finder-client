@@ -65,23 +65,23 @@ const TeacherRoutine = () => {
     .map((r) => ({ ...r, day: normalizeDay(r.day) }));
 
   const timeSlots = unique(
-    teacherRoutines.map((r) => `${r.start_time}-${r.end_time}`)
+    teacherRoutines.map((r) => `${r.start_time}-${r.end_time}`),
   ).sort();
 
   const days = unique(teacherRoutines.map((r) => r.day)).sort(
-    (a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b)
+    (a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b),
   );
 
   const getClass = (day, slot) => {
     const [start, end] = slot.split("-");
     return teacherRoutines.find(
-      (r) => r.day === day && r.start_time === start && r.end_time === end
+      (r) => r.day === day && r.start_time === start && r.end_time === end,
     );
   };
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-360 mx-auto">
         <div className="text-center mb-8">
           <div className="inline-block">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent mb-2">
@@ -149,7 +149,6 @@ const TeacherRoutine = () => {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 border border-gray-100">
-           
             <div className="block sm:hidden text-center text-xs text-gray-500 mb-2">
               ← Swipe to view schedule →
             </div>
@@ -158,7 +157,7 @@ const TeacherRoutine = () => {
                 className="grid gap-px bg-gray-200 rounded-lg overflow-hidden"
                 style={{
                   gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(180px, 1fr))`,
-                  minWidth: 'fit-content'
+                  minWidth: "fit-content",
                 }}
               >
                 <div className="bg-gradient-to-br from-green-600 to-green-700 p-4 text-white font-bold text-center flex items-center justify-center shadow-sm">
@@ -187,12 +186,7 @@ const TeacherRoutine = () => {
 
                     {timeSlots.map((slot) => {
                       const cls = getClass(day, slot);
-                      return (
-                        <Cell
-                          key={day + slot}
-                          entry={cls}
-                        />
-                      );
+                      return <Cell key={day + slot} entry={cls} />;
                     })}
                   </React.Fragment>
                 ))}

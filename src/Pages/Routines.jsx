@@ -161,7 +161,7 @@ const SectionRoutine = () => {
 
   return (
     <div className="min-h-screen  p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-360 mx-auto">
         
         <div className="text-center mb-8">
           <div className="inline-block">

@@ -36,7 +36,7 @@ const Rooms = () => {
           console.log("🔍 Room statuses API response:", statusesRes.data);
 
           const statusesData = Array.isArray(
-            statusesRes.data?.data?.roomStatuses
+            statusesRes.data?.data?.roomStatuses,
           )
             ? statusesRes.data.data.roomStatuses
             : [];
@@ -44,7 +44,7 @@ const Rooms = () => {
           console.log(
             "✅ Room statuses loaded:",
             statusesData.length,
-            "statuses"
+            "statuses",
           );
           console.log("Status data:", statusesData);
 
@@ -78,7 +78,7 @@ const Rooms = () => {
   const getAvailableRooms = () => {
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
+      now.getMinutes(),
     ).padStart(2, "0")}`;
     const todayDate = getTodayDate();
     const todayDay = getTodayDayOfWeek();
@@ -98,10 +98,9 @@ const Rooms = () => {
 
     const filtered = rooms.filter((room) => {
       if (isBusinessHours) {
-    
         const matchingStatuses = roomStatuses.filter((s) => {
           const roomMatch = s.room?.id === room.id || s.room_id === room.id;
-          
+
           if (s.is_recurring) {
             return roomMatch && s.day_of_week === todayDay;
           } else {
@@ -110,7 +109,6 @@ const Rooms = () => {
           }
         });
 
-       
         const activeOccupiedStatus = matchingStatuses.find((s) => {
           if (s.status === "OCCUPIED" && s.routine) {
             return (
@@ -121,17 +119,13 @@ const Rooms = () => {
           return false;
         });
 
-        
         if (activeOccupiedStatus) {
           return false;
         }
 
-        
         const activeFreeStatus = matchingStatuses.find((s) => {
           if (s.status === "FREE") {
-           
             if (s.start_time && s.end_time) {
-              
               if (s.end_time < s.start_time) {
                 return currentTime >= s.start_time || currentTime < s.end_time;
               }
@@ -141,12 +135,10 @@ const Rooms = () => {
           return false;
         });
 
-       
         if (activeFreeStatus) {
           return true;
         }
 
-        
         return false;
       }
 
@@ -159,7 +151,7 @@ const Rooms = () => {
   const getNextClassTime = (roomId) => {
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
+      now.getMinutes(),
     ).padStart(2, "0")}`;
     const today = now
       .toLocaleString("en-US", { weekday: "long" })
@@ -183,7 +175,7 @@ const Rooms = () => {
 
   const now = new Date();
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
-    now.getMinutes()
+    now.getMinutes(),
   ).padStart(2, "0")}`;
   const todayDate = getTodayDate();
 
@@ -196,24 +188,60 @@ const Rooms = () => {
   const isBusinessHours =
     currentTime >= businessStart && currentTime < businessEnd;
 
+  const getLatestStatusForRoomGlobal = (room) => {
+    const todayDay = getTodayDayOfWeek();
+    const candidates = roomStatuses.filter((s) => {
+      const roomMatch = s.room?.id === room.id || s.room_id === room.id;
+      if (!roomMatch) return false;
+      if (s.is_recurring) return s.day_of_week === todayDay;
+      const statusDateOnly = s.status_date?.split("T")[0];
+      return statusDateOnly === todayDate;
+    });
+
+    if (candidates.length === 0) return null;
+
+    // Prefer any currently active OCCUPIED status (time-window) over newer records
+    const activeOccupied = candidates.find((s) => {
+      if (s.status !== "OCCUPIED") return false;
+      const start = s.routine?.start_time || s.start_time;
+      const end = s.routine?.end_time || s.end_time;
+      if (!start || !end) return false;
+      if (end < start) {
+        return currentTime >= start || currentTime < end;
+      }
+      return currentTime >= start && currentTime < end;
+    });
+
+    if (activeOccupied) return activeOccupied;
+
+    // Otherwise return the most recently updated status record
+    candidates.sort((a, b) => {
+      const aTime = new Date(a.updated_at || a.status_date || 0).getTime();
+      const bTime = new Date(b.updated_at || b.status_date || 0).getTime();
+      return bTime - aTime;
+    });
+
+    return candidates[0];
+  };
+
   const displayRooms = isBreakTime
-    ? rooms 
+    ? rooms
     : isBusinessHours
-    ? rooms.filter((room) => {
-        const todayDay = getTodayDayOfWeek();
-        const dbStatus = roomStatuses.find((s) => {
-          const roomMatch = s.room?.id === room.id || s.room_id === room.id;
-          
-          if (s.is_recurring) {
-            return roomMatch && s.day_of_week === todayDay;
-          } else {
-            const statusDateOnly = s.status_date?.split("T")[0];
-            return roomMatch && statusDateOnly === todayDate;
-          }
-        });
-        return !!dbStatus; 
-      })
-    : rooms;
+      ? rooms.filter((room) => {
+          const todayDay = getTodayDayOfWeek();
+          const dbStatus = roomStatuses.find((s) => {
+            const roomMatch = s.room?.id === room.id || s.room_id === room.id;
+
+            if (s.is_recurring) {
+              return roomMatch && s.day_of_week === todayDay;
+            } else {
+              const statusDateOnly = s.status_date?.split("T")[0];
+              return roomMatch && statusDateOnly === todayDate;
+            }
+          });
+          return !!dbStatus;
+        })
+      : rooms;
 
   const availableRooms = getAvailableRooms();
 
@@ -257,14 +285,18 @@ const Rooms = () => {
 
       <h2 className="text-2xl font-bold text-gray-800 mb-4">All Rooms</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayRooms.map((room) => (
-          <RoomCard
-            key={room.id}
-            room={room}
-            routines={routines}
-            roomStatuses={roomStatuses}
-          />
-        ))}
+        {displayRooms.map((room) => {
+          const latest = getLatestStatusForRoomGlobal(room);
+          return (
+            <RoomCard
+              key={room.id}
+              room={room}
+              routines={routines}
+              roomStatuses={roomStatuses}
+              latestStatus={latest}
+            />
+          );
+        })}
       </div>
     </div>
   );

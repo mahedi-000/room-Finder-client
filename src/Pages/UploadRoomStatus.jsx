@@ -447,7 +447,6 @@ const UploadRoomStatus = () => {
                 );
               }
               
-              // For FREE/MAINTENANCE, just show the time slot
               return (
                 <div className="text-sm space-y-1 text-green-800">
                   <div>
@@ -604,7 +603,6 @@ const UploadRoomStatus = () => {
             <option value="RESCHEDULED">Rescheduled</option>
           </select>
           
-          {/* Status explanation */}
           <div className={`mt-3 border rounded-lg p-3 text-sm ${
             formData.status === "OCCUPIED" || formData.status === "RESCHEDULED" 
               ? 'bg-blue-50 border-blue-200' 

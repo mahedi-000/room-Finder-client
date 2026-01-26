@@ -6,7 +6,7 @@ import useRole from "../hooks/useRole";
 
 const Navbar = () => {
   const { user, logOut } = useAuth();
-  const [currentUserRole] = useRole();
+  const [currentUserRole, isRoleLoading] = useRole();
   const navigate = useNavigate();
   const isAdmin = currentUserRole === "ADMIN";
 
@@ -63,7 +63,9 @@ const Navbar = () => {
                     </li>
                   </>
                 )}
-                <li className="py-2 px-3 font-semibold text-gray-600">Routines</li>
+                <li className="py-2 px-3 font-semibold text-gray-600">
+                  Routines
+                </li>
                 <li className="pl-4">
                   <NavLink to="/routines">Section Routine</NavLink>
                 </li>
@@ -106,23 +108,42 @@ const Navbar = () => {
               <li className="relative group">
                 <span className="cursor-pointer hover:text-teal-600 flex items-center gap-1">
                   Routines
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </span>
                 <ul className="absolute left-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <li>
-                    <NavLink to="/routines" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 rounded-t-lg">
+                    <NavLink
+                      to="/routines"
+                      className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 rounded-t-lg"
+                    >
                       Section Routine
                     </NavLink>
                   </li>
                   <li>
-                    <NavLink to="/teacher-routine" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600">
+                    <NavLink
+                      to="/teacher-routine"
+                      className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600"
+                    >
                       Teacher Routine
                     </NavLink>
                   </li>
                   <li>
-                    <NavLink to="/room-routine" className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 rounded-b-lg">
+                    <NavLink
+                      to="/room-routine"
+                      className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 rounded-b-lg"
+                    >
                       Room Routine
                     </NavLink>
                   </li>
@@ -133,12 +154,26 @@ const Navbar = () => {
               </li>
             </ul>
             {user ? (
-              <button
-                onClick={handleLogout}
-                className="btn bg-teal-600 text-white rounded-full hover:scale-105"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-3">
+                {isRoleLoading ? (
+                  <span className="px-2 py-1 bg-teal-50 text-teal-700 rounded-full text-sm font-medium">
+                    Loading...
+                  </span>
+                ) : (
+                  currentUserRole && (
+                    <span className="px-2 py-1 bg-teal-50 text-teal-700 rounded-full text-sm font-medium">
+                      {currentUserRole}
+                    </span>
+                  )
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  className="btn bg-teal-600 text-white rounded-full hover:scale-105"
+                >
+                  Logout
+                </button>
+              </div>
             ) : (
               <div className="flex gap-2">
                 <Link
