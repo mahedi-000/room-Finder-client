@@ -4,11 +4,16 @@ import { formatTime12h } from "../utils/timeFormat";
 import axios from "axios";
 import toast from "react-hot-toast";
 import useRole from "../hooks/useRole";
+import StatusListModal from "./StatusListModal";
+import ConfirmModal from "./ConfirmModal";
 
 const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
   const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_URL;
   const [currentClass, setCurrentClass] = useState(null);
+  const [showStatuses, setShowStatuses] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [currentUserRole] = useRole();
   const canUpdateStatus = currentUserRole && currentUserRole !== "STUDENT";
 
@@ -21,6 +26,13 @@ const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
     const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
       now.getMinutes(),
     ).padStart(2, "0")}`;
+    // Lunch override: show every room as FREE during lunch (13:11 - 13:50)
+    const lunchStart = "13:11"; // 1:11pm
+    const lunchEnd = "13:50"; // 1:50pm
+    if (currentTime >= lunchStart && currentTime < lunchEnd) {
+      setCurrentClass({ status: "FREE" });
+      return;
+    }
     const todayDate = now.toISOString().split("T")[0];
     const today = now
       .toLocaleString("en-US", { weekday: "long" })
@@ -110,18 +122,11 @@ const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
         console.log(`Status ${s.status} has no valid time range, skipping`);
       }
 
-      let dbStatus = foundActiveStatus;
-
-      // If no active status in the current time window, fall back to the most
-      // recent matching status so the card reflects the authoritative record.
-      if (!dbStatus && matchingStatuses.length > 0) {
-        matchingStatuses.sort((a, b) => {
-          const aTime = new Date(a.updated_at || a.status_date || 0).getTime();
-          const bTime = new Date(b.updated_at || b.status_date || 0).getTime();
-          return bTime - aTime;
-        });
-        dbStatus = matchingStatuses[0];
-      }
+      // Only treat a status as authoritative if it's active right now.
+      // Do NOT fall back to historical statuses — showing an old status as
+      // "Occupied" causes confusion. If no active status exists, mark as
+      // NO_RECORD so the UI can hide or ignore the badge.
+      const dbStatus = foundActiveStatus;
 
       console.log("Selected DB Status:", dbStatus);
 
@@ -380,11 +385,13 @@ const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
         <h2 className="text-2xl font-bold text-gray-800">
           Room: {room.room_number}
         </h2>
-        <span
-          className={`px-3 py-1 rounded-full text-sm font-semibold ${badgeClass}`}
-        >
-          {badgeText}
-        </span>
+        {!currentClass?.isNoRecord && (
+          <span
+            className={`px-3 py-1 rounded-full text-sm font-semibold ${badgeClass}`}
+          >
+            {badgeText}
+          </span>
+        )}
       </div>
 
       <p className="text-gray-600 text-sm">{room.room_type}</p>
@@ -392,6 +399,15 @@ const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
       {/* Update Button - Available for ADMIN, ASSISTANT_ADMIN, TEACHER */}
       {canUpdateStatus && (
         <div className="flex gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowStatuses(true);
+            }}
+            className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
+          >
+            Delete Status
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -408,33 +424,68 @@ const RoomCard = ({ room, routines, roomStatuses, latestStatus }) => {
             Update Status
           </button>
           {currentClass && currentClass.isManualStatus && (
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (
-                  window.confirm(
-                    "Are you sure you want to delete this room status?",
-                  )
-                ) {
-                  try {
-                    await axios.delete(
-                      `${API_BASE}/roomStatuses/${currentClass.id}`,
-                    );
-                    toast.success("Room status deleted successfully!");
-                    window.location.reload();
-                  } catch (error) {
-                    console.error("Error deleting room status:", error);
-                    toast.error("Failed to delete room status");
-                  }
-                }
-              }}
-              className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
-            >
-              Delete Status
-            </button>
+            <div className="flex-1">
+              {pendingDelete ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmOpen(true);
+                    }}
+                    className="w-1/2 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDelete(false);
+                    }}
+                    className="w-1/2 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPendingDelete(true);
+                  }}
+                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
+                >
+                  Delete Status
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
+
+      <StatusListModal
+        open={showStatuses}
+        onClose={() => setShowStatuses(false)}
+        room={room}
+      />
+      <ConfirmModal
+        open={confirmOpen}
+        title="Delete Status"
+        message="Delete this status? This action cannot be undone."
+        onConfirm={async () => {
+          try {
+            await axios.delete(`${API_BASE}/roomStatuses/${currentClass.id}`);
+            toast.success("Room status deleted successfully!");
+            window.location.reload();
+          } catch (error) {
+            console.error("Error deleting room status:", error);
+            toast.error("Failed to delete room status");
+          }
+        }}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setPendingDelete(false);
+        }}
+      />
 
       {detailsBlock}
     </div>

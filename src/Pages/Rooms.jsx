@@ -92,7 +92,7 @@ const Rooms = () => {
     }
 
     const businessStart = "10:40";
-    const businessEnd = "18:20";
+    const businessEnd = "16:20";
     const isBusinessHours =
       currentTime >= businessStart && currentTime < businessEnd;
 
@@ -178,19 +178,20 @@ const Rooms = () => {
     now.getMinutes(),
   ).padStart(2, "0")}`;
   const todayDate = getTodayDate();
+  const todayDay = getTodayDayOfWeek();
 
   const breakStart = "13:10";
   const breakEnd = "13:50";
   const isBreakTime = currentTime >= breakStart && currentTime < breakEnd;
 
   const businessStart = "10:40";
-  const businessEnd = "18:20";
+  const businessEnd = "16:20";
   const isBusinessHours =
     currentTime >= businessStart && currentTime < businessEnd;
 
   const getLatestStatusForRoomGlobal = (room) => {
     const todayDay = getTodayDayOfWeek();
-    const candidates = roomStatuses.filter((s) => {
+    let candidates = roomStatuses.filter((s) => {
       const roomMatch = s.room?.id === room.id || s.room_id === room.id;
       if (!roomMatch) return false;
       if (s.is_recurring) return s.day_of_week === todayDay;
@@ -200,7 +201,6 @@ const Rooms = () => {
 
     if (candidates.length === 0) return null;
 
-    // Prefer any currently active OCCUPIED status (time-window) over newer records
     const activeOccupied = candidates.find((s) => {
       if (s.status !== "OCCUPIED") return false;
       const start = s.routine?.start_time || s.start_time;
@@ -214,34 +214,17 @@ const Rooms = () => {
 
     if (activeOccupied) return activeOccupied;
 
-    // Otherwise return the most recently updated status record
-    candidates.sort((a, b) => {
-      const aTime = new Date(a.updated_at || a.status_date || 0).getTime();
-      const bTime = new Date(b.updated_at || b.status_date || 0).getTime();
-      return bTime - aTime;
-    });
-
-    return candidates[0];
+    // Do not fall back to a historical status here. Returning a non-active
+    // historical status can cause the UI to display an incorrect occupied
+    // badge. If there's no active occupied status, return null.
+    return null;
   };
 
-  const displayRooms = isBreakTime
-    ? rooms
-    : isBusinessHours
-      ? rooms.filter((room) => {
-          const todayDay = getTodayDayOfWeek();
-          const dbStatus = roomStatuses.find((s) => {
-            const roomMatch = s.room?.id === room.id || s.room_id === room.id;
-
-            if (s.is_recurring) {
-              return roomMatch && s.day_of_week === todayDay;
-            } else {
-              const statusDateOnly = s.status_date?.split("T")[0];
-              return roomMatch && statusDateOnly === todayDate;
-            }
-          });
-          return !!dbStatus;
-        })
-      : rooms;
+  // Always show all rooms in the "All Rooms" list. Status rendering is
+  // handled per-card (RoomCard) which will hide status badges when there is
+  // no active status record. Filtering here caused rooms without active
+  // statuses to be excluded entirely which is confusing.
+  const displayRooms = rooms;
 
   const availableRooms = getAvailableRooms();
 
@@ -259,7 +242,22 @@ const Rooms = () => {
           </h2>
           <div className="space-y-2">
             {availableRooms.map((room) => {
-              const nextClassTime = getNextClassTime(room.id);
+              // Only show a "Free till" time if there is a DB room status
+              // record for this room today (including recurring). If no
+              // status exists, show "Available all day" to avoid implying
+              // the app created the status from routines alone.
+              const hasStatusForToday = roomStatuses.some((s) => {
+                const roomMatch =
+                  s.room?.id === room.id || s.room_id === room.id;
+                if (!roomMatch) return false;
+                if (s.is_recurring) return s.day_of_week === todayDay;
+                const statusDateOnly = s.status_date?.split("T")[0];
+                return statusDateOnly === todayDate;
+              });
+
+              const nextClassTime = hasStatusForToday
+                ? getNextClassTime(room.id)
+                : null;
               return (
                 <div
                   key={room.id}
